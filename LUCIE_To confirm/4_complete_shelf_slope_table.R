@@ -4,7 +4,7 @@
 rm(list=ls())
 
 setwd("C:/Users/lucie/Dropbox/codes/scripts_stage_Lucie/R")
-table=read.table("shelf_slope.txt",sep="\t",head=T) 
+table=read.table("~/Desktop/WHOI/Data/bathy_data/shelf_slope.txt",sep="\t",head=T) 
 table=table[-nrow(table),]
 
 # Create longitude vector of good size
@@ -13,7 +13,7 @@ lon=seq(-1,158,0.5)
 # Load the bathy
 library(raster)
 
-bathy <- raster("C:/Users/lucie/Documents/Master_MODE_Rennes/M2/Stage/Documents_StageM2/Bathy/gebco_2021_n-58.0_s-74.0_w-2.0_e160.0.tif")
+bathy <- raster("~/Dropbox/data/bathymetry/GEBCO_03_Feb_2022_cc82bde5d257/gebco_2021_n-58.0_s-74.0_w-2.0_e160.0.tif")
 show(bathy)
 
 plot(bathy)
@@ -42,9 +42,10 @@ lat1 <- points_lat[1373] # depends on the considered longitude
 value1 <- depth[1373] # depends on the considered longitude
 
 # Determine the end of the slope (first lat below 3500 meters depth)
-abline(h=-2900, col="orange")
+depth_lim <- 3500
+abline(h = depth_lim, col="orange")
 
-a <- which(depth < (-2900))
+a <- which(depth < (- depth_lim))
 lat2 <- points_lat[a[1]]
 value2 <- depth[a[1]]
   
