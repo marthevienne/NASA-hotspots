@@ -491,12 +491,8 @@ for (p in 1:length(seals)) {
 str(df_dives_interpol)
 
 ## Save dives with interpolated locations in R object and .txt
-file_metrics_dives_interp_loc = paste0(path_output, "interp_dive_metrics_V2")
+file_metrics_dives_interp_loc = paste0(path_output, "dive_metrics_V2")
 saveRDS(df_dives_interpol, file_metrics_dives_interp_loc)
-# write.table(df_dives_interpol,
-#             file = file_metrics_dives_interp_loc,
-#             sep = ",",
-#             row.names = F)
 if (length(nchar(filename)) != 0) {
   print(paste0(filename, " | ", "Dive metrics table saved : ", file_metrics_dives_interp_loc))
 }

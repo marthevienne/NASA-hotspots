@@ -26,7 +26,7 @@ setwd("~/Desktop/WHOI/Data/bathy_data/")
 library(rnaturalearth)
 ## ---------------------------
 
-source("~/Desktop/WHOI/Codes/palettes/palette_bathy.R")
+source("~/Desktop/WHOI/Codes/palettes/pal_bathy.R")
 
 ## Shelf and slope limits
 limits_bathy <- read.csv("shelf_slope_Marthe.txt", sep = ",")
@@ -67,11 +67,12 @@ lim_end_oo <- lim_NA %>%
 open_ocean <- rbind(lim_end_slope, lim_end_oo)
 open_ocean$zone = "open-ocean"
 
+pal <- pal_bathy(n = 3)
 ## Map polygons
 ggplot() +
-  geom_polygon(data = open_ocean, aes(x = lon, y = lat), fill = NA, col = col_d3, linewidth = .3) +
-  geom_polygon(data = cont_slope, aes(x = lon, y = lat), fill = NA, col = col_d2, linewidth = .3) +
-  geom_polygon(data = cont_shelf, aes(x = lon, y = lat), fill = NA, col = col_d1, linewidth = .3) +
+  geom_polygon(data = open_ocean, aes(x = lon, y = lat), fill = NA, col = pal[3], linewidth = .3) +
+  geom_polygon(data = cont_slope, aes(x = lon, y = lat), fill = NA, col = pal[2], linewidth = .3) +
+  geom_polygon(data = cont_shelf, aes(x = lon, y = lat), fill = NA, col = pal[1], linewidth = .3) +
   theme_classic()
 
 ## Compile polygons points in single file

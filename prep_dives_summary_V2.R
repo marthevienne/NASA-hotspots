@@ -24,7 +24,7 @@
 rm(list = ls())
 
 source("~/Desktop/WHOI/Codes/update_seals_table.R")
-source("~/Desktop/WHOI/Codes/my_SSM_filter.R")
+source("~/Desktop/WHOI/Codes/useful_functions/my_SSM_filter.R")
 
 ## Path input data
 path_input = "~/Desktop/WHOI/Data/output_data/"
@@ -232,7 +232,7 @@ rm(dives_num)
 #     => T in sec since 01/01/1970
 #     /!\ locations are not estimated at that point with BSSM output
 #=====================================================================================================
-rm(list=ls())
+# rm(list=ls())
 
 seals = read.csv("~/Desktop/WHOI/Data/output_data/seals.csv")
 dives_num = readRDS("~/Desktop/WHOI/Data/output_data/filtered_numbered_dives")
@@ -322,17 +322,21 @@ rm(list = c(dives_num, df_dives))
 #==================================================================
 # 4) ESTIMATE DIVES LOCATIONS WITH BSSM
 #==================================================================
+rm(list=ls())
 
 filter_dive_on_bssm_accuracy = TRUE
 threshold = 10 #km
+north_boundary = -60
 # TRUE => dives closest in time from poorly accurate predicted locations are filtered with a upper threshold on standard error. 
 # FALSE => all dive locations are kept
 
-dives <- readRDS(paste0(path_input, "dive_metrics_V1"))
+dives <- readRDS("~/Desktop/WHOI/Data/output_data/dive_metrics_V1")
 dives$DE_DATE <- as.POSIXct(dives$DE_DATE, origin = "1970-01-01", tz = "GMT")
 str(dives)
 
-BSSM = readRDS(paste0(path_input, "predictedTracks_ssm"))
+BSSM = readRDS("~/Desktop/WHOI/Data/output_data/predictedTracks_ssm")
+
+seals <- read.csv("~/Desktop/WHOI/Data/output_data/seals.csv")
 
 df_dives_interpol = NULL
 seals = unique(BSSM$id)
@@ -365,9 +369,11 @@ str(df_dives_interpol)
 
 # Remove dives with NA locations -> these are the dives that do not occur in the track timeline
 #                                   hence the interpolation returns NA
-df_dives_interpol <- df_dives_interpol %>% filter(!(is.na(interpLon) | is.na(interpLat)))
 
-seals <- read.csv(paste0(path_input, "seals.csv"))
+df_dives_interpol <- df_dives_interpol %>% filter(!(is.na(interpLon) | is.na(interpLat)))
+df_dives_interpol <- df_dives_interpol %>% filter(interpLat < north_boundary)
+range(df_dives_interpol$interpLat, na.rm = T)
+
 seals <- update_seals_table(df_dives_interpol, seals, "n_dives_SSM_filter")
 
 ## Save updated seals table ======================================
@@ -376,7 +382,7 @@ write.table(seals, file_output_seals, sep = ",", row.names = F, col.names = T)
 ##================================================================
 
 ## Save dives with interpolated locations in R object
-file_metrics_dives_interp_loc = paste0(path_output, "dive_metrics_V2")
+file_metrics_dives_interp_loc = "~/Desktop/WHOI/Data/output_data/dive_metrics_V2"
 saveRDS(df_dives_interpol, file_metrics_dives_interp_loc)
 if (length(nchar(filename)) != 0) {
   print(paste0(filename, " | ", "Dive metrics table saved : ", file_metrics_dives_interp_loc))
