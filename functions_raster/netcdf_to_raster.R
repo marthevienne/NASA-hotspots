@@ -1,5 +1,5 @@
 # Test function
-# library(reshape2)
+library(reshape2)
 # file = "~/Dropbox/data/polynya_contours_NCAR_2023/Low res run/ssmi_cdr_typical_polynya_mask_85%thresh"
 # r = netcdf_to_raster(file_name = paste0(file, ".nc"),
 #                         lon_name = "TLONG_sub",
@@ -12,13 +12,13 @@
 # plot(r)
 
 
-netcdf_to_raster <- function(file_name, 
-                                        lon_name, 
-                                        lat_name, 
-                                        var_name,
-                                        n_years,
-                                        n_months,
-                                        tolerance) {
+netcdf_to_raster <- function(file_name,
+                             lon_name,
+                             lat_name,
+                             var_name,
+                             n_years,
+                             n_months,
+                             tolerance) {
   
   ncin <- ncdf4::nc_open(file_name)
   
@@ -54,6 +54,17 @@ netcdf_to_raster <- function(file_name,
                  !is.na(grid_coord[,2]))
   grid_coord <- grid_coord[idx,]
   
+  #Progress bar
+  n_iter = n_years * n_months
+  
+  # Initializes the progress bar
+  pb <- txtProgressBar(min = 0,      # Minimum value of the progress bar
+                       max = n_iter, # Maximum value of the progress bar
+                       style = 3,    # Progress bar style (also available style = 1 and style = 2)
+                       width = 50,   # Progress bar width. Defaults to getOption("width")
+                       char = "=")
+  
+  
   if (n_years == 1 & n_months == 1) {
     
     pixels <- SpatialPixelsDataFrame(points = grid_coord,
@@ -66,6 +77,9 @@ netcdf_to_raster <- function(file_name,
     
     r <- list()
     a <- 1
+    
+    setTxtProgressBar(pb, 0)
+    
     for (h in 1:(n_years*n_months)) {
       
       pixels <- SpatialPixelsDataFrame(points = grid_coord,
@@ -75,8 +89,15 @@ netcdf_to_raster <- function(file_name,
       r[[a]] <- raster(pixels[,'z'])
       a <- a + 1
       
+      Sys.sleep(0.1) # Remove this line and add your code
+      
+      # Sets the progress bar to the current state
+      setTxtProgressBar(pb, h)
+      
     }
     r <- do.call(brick, r)
+    
+    close(pb) # Close the connection
   }
   
   return(r)
