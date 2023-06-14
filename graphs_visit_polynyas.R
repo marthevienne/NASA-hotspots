@@ -24,6 +24,7 @@ rm(list=ls())
 ## ---------------------------
 ## Library
 library(dplyr)
+library(wesanderson)
 ## ---------------------------
 
 ## Palette polynyas
@@ -170,13 +171,16 @@ heatmap_time_pol <-
         panel.grid.minor = element_line(linewidth = 0.25, linetype = 'solid',
                                         colour = "white"))
 
-ggsave(plot = heatmap_time_pol, "~/Dropbox/data/outputs_Marthe_2023/polynya_usage/PERIOD_COVERED_polynyas.png", height = 25, width = 50, units = c("cm"), dpi = 300)
+ggsave(plot = heatmap_time_pol, "~/Dropbox/data/outputs_Marthe_2023/polynya_usage/DATA_COVERAGE_polynyas.png", height = 25, width = 50, units = c("cm"), dpi = 300)
 
-#==================================================================
-# PERCENTAGE OF TIME SPENT IN A GIVEN POLYNYA BY MONTH (all seals)
-#==================================================================
-threshold = 10 # days of data
-file_name = sprintf("~/Dropbox/data/outputs_Marthe_2023/polynya_usage/PERIOD_BY_NDAYS_polynyas_thr%s.png", threshold)
+#========================================================================================================
+# BY MONTH | PERCENTAGE OF TIME SPENT IN A GIVEN POLYNYA (continuous with threshold or not) (all seals)
+#========================================================================================================
+min_yr <- min(dives$year, na.rm = T)
+max_yr <- max(dives$year, na.rm = T)
+
+threshold = 0 # days of data
+file_name = sprintf("~/Dropbox/data/outputs_Marthe_2023/polynya_usage/DATA_COVERAGE_polynyas_thr%s.png", threshold)
 
 summary_time_spent_perc <- dives %>%
   filter(pol > 0) %>%
@@ -196,101 +200,245 @@ heatmap_time_rel_pol <-
   xlab("Month") +
   ylab("") +
   labs(fill = "Number of days with data") +
+  ggtitle(sprintf("%s-%s", min_yr, max_yr))+
   theme_bw() +
-  theme(axis.text.y = element_text(size = 20, face="bold"),
+  theme(axis.text.y = element_text(size = 15, face="bold"),
         axis.text.x = element_text(size = 20),
         axis.title = element_text(size = 25, face="bold"),
         legend.text = element_text(size=20), #__________ legend texts
-        legend.title=element_text(size=20, face="bold"),
+        legend.title=element_text(size=20, face="bold"), 
+        plot.title = element_text(size = 30, face = "bold"),
         panel.background = element_rect(fill = "white",
                                         colour = "white",
                                         linewidth = 0.5, linetype = "solid"),
         panel.grid.major = element_line(linewidth = 0.05, linetype = 'solid',
-                                        colour = "black"), 
+                                        colour = "lightgrey"), 
         panel.grid.minor = element_line(linewidth = 0.25, linetype = 'solid',
                                         colour = "white"))
 
-ggsave(plot = heatmap_time_rel_pol, file_name, height = 25, width = 40, units = c("cm"), dpi = 300)
+ggsave(plot = heatmap_time_rel_pol, file_name, height = 20, width = 40, units = c("cm"), dpi = 300)
+
+#==============================================================================
+# BY MONTH | PERCENTAGE OF TIME SPENT IN A GIVEN POLYNYA (bins) (all seals)
+#==============================================================================
+file_name = "~/Dropbox/data/outputs_Marthe_2023/polynya_usage/DATA_COVERAGE_polynyas_bins.pdf"
+
+bins = c("[0-5]", "]5-10]", "]10-15]", "]15-20]", "]20-25]", "]25-31]")
+pal = c("#DEF5E5FF", "#60CEACFF", "#3497A9FF", "#395D9CFF", "#382A54FF", "#0B0405FF")
+
+names(pal) = bins
+
+summary <- dives %>%
+  filter(pol > 0) %>%
+  mutate(day = day(DE_DATE)) %>%
+  group_by(pol, month) %>%
+  select(c(pol, month, day)) %>%
+  distinct() %>%
+  summarize(n_days = n()) %>%
+  mutate(cat = case_when(n_days > 25 ~ "]25-31]",
+                         n_days > 20 ~ "]20-25]",
+                         n_days > 15 ~ "]15-20]",
+                         n_days > 10 ~ "]10-15]",
+                         n_days > 5 ~ "]5-10]",
+                         n_days <= 5 ~ "[0-5]"))
+
+summary$cat <- factor(summary_time_spent_perc_month$cat, levels = rev(bins))
+labs <- c(rev(bins), "")
 
 
-#===============================================================================
-# MIN AND MAX PERCENTAGE OF TIME SPENT IN A GIVEN POLYNYA BY MONTH (all seals)
-#===============================================================================
-threshold = 10 # days of data
-file_name = sprintf("~/Dropbox/data/outputs_Marthe_2023/polynya_usage/MIN_PERIOD_BY_NDAYS_polynyas_thr%s.png", threshold)
+all_pol_summary <- polynya_info %>% left_join(summary, by = c("ID" = "pol")) #___include all polynyas, even those w/o data
 
-summary_time_spent_perc <- dives %>%
+month_df <- data_frame(month = rep(seq(1:12), 21), pol = rep(seq(1:21), each = 12))
+
+all_pol_summary_all_month <- all_pol_summary %>%
+  full_join(month_df, by = c("month", "ID" = "pol")) #___include all months, even those w/o data
+
+heatmap <- 
+  ggplot(all_pol_summary_all_month, aes(x = factor(month), as.factor(ID))) + 
+  scale_y_discrete(labels = polynya_info_dict) +
+  scale_x_discrete(labels = seq(1:12), limits = factor(seq(1:12))) +
+  xlab("Month") +
+  ylab("") +
+  ggtitle(sprintf("%s-%s", min_yr, max_yr)) +
+  labs(fill = "Number of days \nwith data") +
+  theme_bw() +
+  theme(axis.text.y = element_text(size = 15, face="bold"),
+        axis.text.x = element_text(size = 20),
+        axis.title = element_text(size = 25, face="bold"),
+        plot.title = element_text(size = 30, face = "bold"),
+        legend.text = element_text(size = 20), #__________ legend texts
+        legend.title = element_text(size = 20, face="bold"),
+        panel.background = element_rect(fill = "white",
+                                        colour = "white",
+                                        linewidth = 0.5, linetype = "solid"),
+        panel.grid.major = element_line(linewidth = 0.05, linetype = 'solid',
+                                        colour = "lightgrey"), 
+        panel.grid.minor = element_line(linewidth = 0.25, linetype = 'solid',
+                                        colour = "white")) 
+
+heatmap <- heatmap + 
+  geom_tile(aes(fill = cat), col = "white") +
+  scale_fill_manual(values = pal, na.value = NA, limits = rev(bins)) #___limits -> display all bins in colorscale
+
+ggsave(plot = heatmap, file_name, height = 20, width = 40, units = c("cm"), dpi = 300)
+
+
+#============================================================================================================
+# BY MONTH/YEAR | PERCENTAGE OF TIME SPENT IN A GIVEN POLYNYA (continuous with threshold or not) (all seals)
+#============================================================================================================
+threshold = 15 # days of data
+category = F
+
+if (category) {
+  file_name = sprintf("~/Dropbox/data/outputs_Marthe_2023/polynya_usage/DATA_COVERAGE_by_year_polynyas_thr%s.pdf", threshold)
+} else {
+  file_name = "~/Dropbox/data/outputs_Marthe_2023/polynya_usage/DATA_COVERAGE_by_year_polynyas.pdf"
+}
+
+summary_time_spent_perc_yr_month <- dives %>%
   filter(pol > 0) %>%
   mutate(day = day(DE_DATE)) %>%
   group_by(pol, month, year) %>%
   select(c(pol, month, year, day)) %>%
   distinct() %>%
   summarize(n_days = n()) %>%
-  ungroup() %>%
-  group_by(pol, month) %>%
-  mutate(min_n_days = min(n_days, na.rm = T),
-         max_n_days = max(n_days, na.rm = T)) %>%
-  mutate(n_days_thr_min = case_when(min_n_days < threshold ~ NA,
-                                    min_n_days >= threshold ~ min_n_days),
-         n_days_thr_max = case_when(max_n_days < threshold ~ NA,
-                                    max_n_days >= threshold ~ max_n_days))
+  mutate(n_days_thresh = case_when(n_days < threshold ~ sprintf("< %s", threshold),
+                                   n_days >= threshold ~ sprintf(">= %s", threshold)))
 
-## Min time period covered
-heatmap_min_time_pol <- 
-  ggplot(summary_time_spent_perc, aes(x = factor(month), as.factor(pol))) + 
-  geom_tile(aes(fill = n_days_thr_min)) +
-  scale_fill_viridis_c(na.value = "lightgrey") +
-  scale_y_discrete(labels = polynya_info_dict) +
-  xlab("Month") +
-  ylab("") +
-  labs(fill = "Number of days with data") +
-  theme_bw() +
-  theme(axis.text.y = element_text(size = 20, face="bold"),
-        axis.text.x = element_text(size = 20),
-        axis.title = element_text(size = 25, face="bold"),
-        legend.text = element_text(size=20), #__________ legend texts
-        legend.title=element_text(size=20, face="bold"),
-        panel.background = element_rect(fill = "white",
-                                        colour = "white",
-                                        linewidth = 0.5, linetype = "solid"),
-        panel.grid.major = element_line(linewidth = 0.05, linetype = 'solid',
-                                        colour = "black"), 
-        panel.grid.minor = element_line(linewidth = 0.25, linetype = 'solid',
-                                        colour = "white"))
+years <- sort(unique(summary_time_spent_perc_yr_month$year))
+pal <- c("#80CAAC", "#E5E5E5")
+labs = c(sprintf('< %s', threshold), sprintf('>= %s', threshold), '')
 
-ggsave(plot = heatmap_min_time_pol, file_name, height = 20, width = 40, units = c("cm"), dpi = 300)
+pdf(file_name,
+    height = 6,
+    width = 15)
 
-## Max time period covered
-file_name = sprintf("~/Dropbox/data/outputs_Marthe_2023/polynya_usage/MAX_PERIOD_BY_NDAYS_polynyas_thr%s.png", threshold)
+for (yr in years) {
+  
+  summary <- summary_time_spent_perc_yr_month %>%
+    filter(year == yr)
+  
+  all_pol_summary <- polynya_info %>% left_join(summary, by = c("ID" = "pol")) #___include all polynyas, even those w/o data
+  
+  month_df <- data_frame(month = rep(seq(1:12), 21), pol = rep(seq(1:21), each = 12))
+  all_pol_summary_all_month <- all_pol_summary %>% 
+    full_join(month_df, by = c("month", "ID" = "pol")) #___include all months, even those w/o data
+  
+  heatmap <- 
+    ggplot(all_pol_summary_all_month, aes(x = factor(month), as.factor(ID))) + 
+    scale_y_discrete(labels = polynya_info_dict) +
+    scale_x_discrete(labels = seq(1:12), limits = factor(seq(1:12))) +
+    xlab("Month") +
+    ylab("") +
+    labs(fill = "Number of days \nwith data") +
+    ggtitle(yr) +
+    theme_bw() +
+    theme(axis.text.y = element_text(size = 20, face="bold"),
+          axis.text.x = element_text(size = 20),
+          axis.title = element_text(size = 25, face="bold"),
+          plot.title = element_text(size = 30, face = "bold"),
+          legend.text = element_text(size = 20), #__________ legend texts
+          legend.title = element_text(size = 20, face="bold"),
+          panel.background = element_rect(fill = "white",
+                                          colour = "white",
+                                          linewidth = 0.5, linetype = "solid"),
+          panel.grid.major = element_line(linewidth = 0.05, linetype = 'solid',
+                                          colour = "lightgrey"), 
+          panel.grid.minor = element_line(linewidth = 0.25, linetype = 'solid',
+                                          colour = "white")) 
+  
+  if (category) {
+    heatmap <- heatmap + 
+      geom_tile(aes(fill = n_days_thresh), col = "white") +
+      scale_fill_manual(values = rev(pal), na.value = NA, labels = labs)
+  } else {
+    heatmap <- heatmap +
+      geom_tile(aes(fill = n_days)) +
+      scale_fill_viridis_c(na.value = NA, breaks = seq(0, 31, 5), limits = c(0, 31)) +
+      guides(fill = guide_colourbar(barwidth = 1, barheight = 10))
+  }
+  
+  print(heatmap)
+}
 
-heatmap_max_time_pol <- 
-  ggplot(summary_time_spent_perc, aes(x = factor(month), as.factor(pol))) + 
-  geom_tile(aes(fill = n_days_thr_max)) +
-  scale_fill_viridis_c(na.value = "lightgrey") +
-  scale_y_discrete(labels = polynya_info_dict) +
-  xlab("Month") +
-  ylab("") +
-  labs(fill = "Number of days with data") +
-  theme_bw() +
-  theme(axis.text.y = element_text(size = 20, face="bold"),
-        axis.text.x = element_text(size = 20),
-        axis.title = element_text(size = 25, face="bold"),
-        legend.text = element_text(size=20), #__________ legend texts
-        legend.title=element_text(size=20, face="bold"),
-        panel.background = element_rect(fill = "white",
-                                        colour = "white",
-                                        linewidth = 0.5, linetype = "solid"),
-        panel.grid.major = element_line(linewidth = 0.05, linetype = 'solid',
-                                        colour = "black"), 
-        panel.grid.minor = element_line(linewidth = 0.25, linetype = 'solid',
-                                        colour = "white"))
+dev.off()
 
-ggsave(plot = heatmap_max_time_pol, file_name, height = 20, width = 40, units = c("cm"), dpi = 300)
+#=================================================================================
+# BY MONTH/YEAR | PERCENTAGE OF TIME SPENT IN A GIVEN POLYNYA (bins) (all seals)
+#=================================================================================
+file_name = "~/Dropbox/data/outputs_Marthe_2023/polynya_usage/DATA_COVERAGE_by_year_polynyas_bins.pdf"
 
+bins = c("[0-5]", "]5-10]", "]10-15]", "]15-20]", "]20-25]", "]25-31]")
+pal = c("#DEF5E5FF", "#60CEACFF", "#3497A9FF", "#395D9CFF", "#382A54FF", "#0B0405FF")
 
-#==============================================================================
-# PERCENTAGE OF TIME SPENT IN A GIVEN POLYNYA BY MONTH AND BY YEAR (all seals)
-#==============================================================================
+names(pal) = bins
+
+summary_time_spent_perc_yr_month <- dives %>%
+  filter(pol > 0) %>%
+  mutate(day = day(DE_DATE)) %>%
+  group_by(pol, month, year) %>%
+  select(c(pol, month, year, day)) %>%
+  distinct() %>%
+  summarize(n_days = n()) %>%
+  mutate(cat = case_when(n_days > 25 ~ "]25-31]",
+                         n_days > 20 ~ "]20-25]",
+                         n_days > 15 ~ "]15-20]",
+                         n_days > 10 ~ "]10-15]",
+                         n_days > 5 ~ "]5-10]",
+                         n_days <= 5 ~ "[0-5]"))
+
+summary_time_spent_perc_yr_month$cat <- factor(summary_time_spent_perc_yr_month$cat, levels = rev(bins))
+labs <- c(rev(bins), "")
+
+years <- sort(unique(summary_time_spent_perc_yr_month$year))
+
+pdf(file_name,
+    height = 6,
+    width = 15)
+
+for (yr in years) {
+  
+  summary <- summary_time_spent_perc_yr_month %>%
+    filter(year == yr)
+  
+  all_pol_summary <- polynya_info %>% left_join(summary, by = c("ID" = "pol")) #___include all polynyas, even those w/o data
+  
+  month_df <- data_frame(month = rep(seq(1:12), 21), pol = rep(seq(1:21), each = 12))
+  all_pol_summary_all_month <- all_pol_summary %>% 
+    full_join(month_df, by = c("month", "ID" = "pol")) #___include all months, even those w/o data
+  
+  heatmap <- 
+    ggplot(all_pol_summary_all_month, aes(x = factor(month), as.factor(ID))) + 
+    scale_y_discrete(labels = polynya_info_dict) +
+    scale_x_discrete(labels = seq(1:12), limits = factor(seq(1:12))) +
+    xlab("Month") +
+    ylab("") +
+    labs(fill = "Number of days \nwith data") +
+    ggtitle(yr) +
+    theme_bw() +
+    theme(axis.text.y = element_text(size = 15, face="bold"),
+          axis.text.x = element_text(size = 20),
+          axis.title = element_text(size = 25, face="bold"),
+          plot.title = element_text(size = 30, face = "bold"),
+          legend.text = element_text(size = 20), #__________ legend texts
+          legend.title = element_text(size = 20, face="bold"),
+          panel.background = element_rect(fill = "white",
+                                          colour = "white",
+                                          linewidth = 0.5, linetype = "solid"),
+          panel.grid.major = element_line(linewidth = 0.05, linetype = 'solid',
+                                          colour = "lightgrey"), 
+          panel.grid.minor = element_line(linewidth = 0.25, linetype = 'solid',
+                                          colour = "white")) 
+  
+  heatmap <- heatmap + 
+    geom_tile(aes(fill = cat), col = "white") +
+    scale_fill_manual(values = pal, na.value = NA, limits = rev(bins)) #___limits -> display all bins in colorscale
+  
+  print(heatmap)
+}
+
+dev.off()
 
 ## End script
 rm(list=ls())
+
