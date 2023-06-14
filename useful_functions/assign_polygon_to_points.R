@@ -1,4 +1,6 @@
-assign_polygon_to_points <- function(df_pts, df_polygons, split_polygons) {
+## Multiple ID polygon format = ^[0-9]*.*
+
+assign_polygon_to_points <- function(df_pts, df_polygons, split_polygons, multiple = F) {
   val = data.frame("val" = rep(1, nrow(df_pts)))
   sp_dives = SpatialPointsDataFrame(cbind(df_pts$lon, df_pts$lat), data = val)
   var = colnames(df_polygons)
@@ -16,5 +18,9 @@ assign_polygon_to_points <- function(df_pts, df_polygons, split_polygons) {
   
   id = over(sp_dives, sps_pol)
   df_pts$id = names(p_pol)[as.numeric(id)]
+  
+  if (multiple) {
+    df_pts$id <- as.numeric(str_match(df_pts$id, "[0-9]*"))
+  }
   return(df_pts)
 }

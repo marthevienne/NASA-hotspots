@@ -111,11 +111,11 @@ for (d in dates) {
   r2 <- r[[lyr_raster]]
   r3 <- crop(r2, bbox)
   
-  # SpP_ras <- rasterize(SPDF, r3, getCover=TRUE)
-  # SpP_ras[SpP_ras == 0] <- NA
-  
-  # r4 <- mask(r3, SpP_ras)
-  r4 <- mask(r3, SPDF)
+  SpP_ras <- rasterize(SPDF, r3, getCover=TRUE)
+  SpP_ras[SpP_ras == 0] <- NA
+
+  r4 <- mask(r3, SpP_ras)
+  # r4 <- mask(r3, SPDF)
   
   r_new[[i]] <- r4
   
@@ -183,13 +183,12 @@ SPDF <- df_to_SpatialPolygonsDataFrame(df_polynyas_lyr, split_polygons = "new_id
 
 e <- extent(SPDF)
 
-pdf("~/Dropbox/data/outputs_Marthe_2023/polynya contours/map_overlap_NCAR_OBS_centroid.pdf", width = 7, height = 4)
+pdf("~/Dropbox/data/outputs_Marthe_2023/polynya contours/map_overlap_NCAR_OBS.pdf", width = 7, height = 4)
 print(plot(e, lwd = .0, col = "white", main = "August 2004"))
 print(plot(r$August.2004, add = T, col = "red", 
            useRaster = FALSE, legend = F))
-# print(plot(r_new$August.2004, add = T, col = "green", 
-#            useRaster = FALSE, legend = F))
-print(plot(r4, add = T, col = "green", useRaster = F, legend = F))
+print(plot(r_new$August.2004, add = T, col = "green",
+           useRaster = FALSE, legend = F))
 print(plot(SPDF, add = T))
 dev.off()
 

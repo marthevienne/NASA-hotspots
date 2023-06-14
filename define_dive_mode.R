@@ -54,6 +54,8 @@ dives_below_bathy <- dives %>% filter(dist_from_seafloor <= 0)
 
 ## Plot dives and bathymetry in 3D
 r <- raster("~/Desktop/WHOI/Data/bathy_data/RES_0.0041_BATHY_gebco_2023_sub_ice_n-60.0_s-74.0_w-6.0_e170.0.grd")
+bbox <- extent(c(-2, 151, -72, -60))
+r <- crop(r, bbox)
 r2 <- aggregate(r, fact = 100)
 df_bathy <- raster_to_df(r2)
 
@@ -70,22 +72,16 @@ htmlwidgets::saveWidget(
   selfcontained = TRUE #___creates a single html file
 )
 
-bbox <- extent(c(-2, 151, -70, -62))
-r2 <- crop(r, bbox)
-df_bathy <- raster_to_df(r2)
-
-dives_shelf_slope <- dives %>% filter(zone %in% c("shelf", "slope"))
-max(dives_shelf_slope$interpLat)
 
 p3 <- plot_ly(width = 1000, height = 1000) %>% 
   add_trace(data = df_bathy,  x = ~x, y = ~y, z = ~value, type = "mesh3d", intensity = ~value) %>%
-  add_markers(data = dives_shelf_slope, x = ~interpLon, y = ~interpLat, z = ~-MAX_DEP, marker = list(size = 1, color = "black")) %>%
+  add_markers(data = dives, x = ~interpLon, y = ~interpLat, z = ~-MAX_DEP, marker = list(size = 1, color = "black")) %>%
   layout(autosize = F, scene = list(aspectmode = "manual",
                                     aspectratio = list(x = 1, y = 1, z = 1)))
 
 htmlwidgets::saveWidget(
   widget = p3,
-  file = "~/Dropbox/data/outputs_Marthe_2023/dives_bathy/shelf_slope_dives_3D.html",
+  file = "~/Dropbox/data/outputs_Marthe_2023/dives_bathy/dives_3D.html",
   selfcontained = TRUE #___creates a single html file
 )
 
