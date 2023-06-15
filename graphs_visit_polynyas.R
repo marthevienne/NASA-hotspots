@@ -221,9 +221,7 @@ ggsave(plot = heatmap_time_rel_pol, file_name, height = 20, width = 40, units = 
 #==============================================================================
 # BY MONTH | PERCENTAGE OF TIME SPENT IN A GIVEN POLYNYA (bins) (all seals)
 #==============================================================================
-file_name = "~/Dropbox/data/outputs_Marthe_2023/polynya_usage/DATA_COVERAGE_polynyas_bins.pdf"
-
-bins = c("[0-5]", "]5-10]", "]10-15]", "]15-20]", "]20-25]", "]25-31]")
+bins = c("]0-5]", "]5-10]", "]10-15]", "]15-20]", "]20-25]", "]25-31]")
 pal = c("#DEF5E5FF", "#60CEACFF", "#3497A9FF", "#395D9CFF", "#382A54FF", "#0B0405FF")
 
 names(pal) = bins
@@ -231,20 +229,37 @@ names(pal) = bins
 summary <- dives %>%
   filter(pol > 0) %>%
   mutate(day = day(DE_DATE)) %>%
-  group_by(pol, month) %>%
-  select(c(pol, month, day)) %>%
+  group_by(pol, month, year) %>%
+  select(c(pol, month, year, day)) %>%
   distinct() %>%
   summarize(n_days = n()) %>%
-  mutate(cat = case_when(n_days > 25 ~ "]25-31]",
-                         n_days > 20 ~ "]20-25]",
-                         n_days > 15 ~ "]15-20]",
-                         n_days > 10 ~ "]10-15]",
-                         n_days > 5 ~ "]5-10]",
-                         n_days <= 5 ~ "[0-5]"))
+  reframe(mean_n_days = mean(n_days),
+         min_n_days = min(n_days),
+         max_n_days = max(n_days)) %>%
+  mutate(cat_mean = case_when(mean_n_days > 25 ~ "]25-31]",
+                         mean_n_days > 20 ~ "]20-25]",
+                         mean_n_days > 15 ~ "]15-20]",
+                         mean_n_days > 10 ~ "]10-15]",
+                         mean_n_days > 5 ~ "]5-10]",
+                         mean_n_days <= 5 ~ "[0-5]"),
+         cat_min = case_when(min_n_days > 25 ~ "]25-31]",
+                              min_n_days > 20 ~ "]20-25]",
+                              min_n_days > 15 ~ "]15-20]",
+                              min_n_days > 10 ~ "]10-15]",
+                              min_n_days > 5 ~ "]5-10]",
+                              min_n_days <= 5 ~ "[0-5]"),
+         cat_max = case_when(max_n_days > 25 ~ "]25-31]",
+                              max_n_days > 20 ~ "]20-25]",
+                              max_n_days > 15 ~ "]15-20]",
+                              max_n_days > 10 ~ "]10-15]",
+                              max_n_days > 5 ~ "]5-10]",
+                              max_n_days <= 5 ~ "[0-5]")
+         )
+
+head(summary)
 
 summary$cat <- factor(summary_time_spent_perc_month$cat, levels = rev(bins))
 labs <- c(rev(bins), "")
-
 
 all_pol_summary <- polynya_info %>% left_join(summary, by = c("ID" = "pol")) #___include all polynyas, even those w/o data
 
@@ -253,6 +268,11 @@ month_df <- data_frame(month = rep(seq(1:12), 21), pol = rep(seq(1:21), each = 1
 all_pol_summary_all_month <- all_pol_summary %>%
   full_join(month_df, by = c("month", "ID" = "pol")) #___include all months, even those w/o data
 
+head(all_pol_summary_all_month)
+
+mode = "min"
+file_name = sprintf("~/Dropbox/data/outputs_Marthe_2023/polynya_usage/%s_DATA_COVERAGE_polynyas_bins.pdf", mode)
+
 heatmap <- 
   ggplot(all_pol_summary_all_month, aes(x = factor(month), as.factor(ID))) + 
   scale_y_discrete(labels = polynya_info_dict) +
@@ -260,7 +280,6 @@ heatmap <-
   xlab("Month") +
   ylab("") +
   ggtitle(sprintf("%s-%s", min_yr, max_yr)) +
-  labs(fill = "Number of days \nwith data") +
   theme_bw() +
   theme(axis.text.y = element_text(size = 15, face="bold"),
         axis.text.x = element_text(size = 20),
@@ -274,12 +293,22 @@ heatmap <-
         panel.grid.major = element_line(linewidth = 0.05, linetype = 'solid',
                                         colour = "lightgrey"), 
         panel.grid.minor = element_line(linewidth = 0.25, linetype = 'solid',
-                                        colour = "white")) 
-
-heatmap <- heatmap + 
-  geom_tile(aes(fill = cat), col = "white") +
+                                        colour = "white")) +
   scale_fill_manual(values = pal, na.value = NA, limits = rev(bins)) #___limits -> display all bins in colorscale
 
+if (mode == "mean") {
+  heatmap <- heatmap +
+    labs(fill = "Mean number of \ndays with data") +
+    geom_tile(aes(fill = cat_mean), col = "white")
+} else if (mode == "min") {
+  heatmap <- heatmap +
+    labs(fill = "Minimum number of \ndays with data") +
+    geom_tile(aes(fill = cat_min), col = "white")
+} else {
+  heatmap <- heatmap +
+    labs(fill = "Maximum number of \ndays with data") +
+    geom_tile(aes(fill = cat_max), col = "white")
+}
 ggsave(plot = heatmap, file_name, height = 20, width = 40, units = c("cm"), dpi = 300)
 
 
@@ -304,6 +333,11 @@ summary_time_spent_perc_yr_month <- dives %>%
   summarize(n_days = n()) %>%
   mutate(n_days_thresh = case_when(n_days < threshold ~ sprintf("< %s", threshold),
                                    n_days >= threshold ~ sprintf(">= %s", threshold)))
+
+summary_time_spent_perc_yr_month %>%
+  filter(n_days >= 15) %>%
+  ungroup() %>%
+  summarize(n = n())
 
 years <- sort(unique(summary_time_spent_perc_yr_month$year))
 pal <- c("#80CAAC", "#E5E5E5")
