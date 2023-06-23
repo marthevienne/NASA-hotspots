@@ -25,6 +25,8 @@ rm(list=ls())
 ## Library
 library(dplyr)
 library(wesanderson)
+remotes::install_github("coolbutuseless/ggpattern")
+library(ggpattern)
 ## ---------------------------
 
 ## Palette polynyas
@@ -32,7 +34,7 @@ source("~/Desktop/WHOI/Codes/palettes/palette_polynya.R") #___palette polynyas (
 
 ## Polynya info
 polynya_info <- read.csv("~/Desktop/WHOI/Data/polynyas_contours/OBS/ID_polynyas_Esther.csv", sep = ";")
-polynya_info_dict <- as.list(polynya_info[,2]) #___as dictionnary (fill labels)
+polynya_info_dict <- polynya_info[,2] #___as dictionnary (fill labels)
 names(polynya_info_dict) = polynya_info$ID
 
 dives <- readRDS("~/Desktop/WHOI/Data/output_data/dive_metrics_V8")
@@ -80,6 +82,98 @@ plot_nseals_by_pol <-
 
 ggsave(plot = plot_nseals_by_pol, "~/Dropbox/data/outputs_Marthe_2023/polynya_usage/barplot_seals_per_pol.png", height = 30, width = 25, units = c("cm"), dpi = 300)
 
+#==================================================================
+# DATA COVERAGE BY POLYNYA
+#==================================================================
+
+#---Stacked barplot of number of days with data by polynya and by year
+
+pol_usage_monthly <- dives %>%
+  filter(pol > 0) %>%
+  mutate(day = day(DE_DATE)) %>%
+  group_by(pol, month, year) %>%
+  select(c(pol, month, year, day)) %>%
+  distinct() %>%
+  summarize(n_days = n()) %>%
+  mutate(season = case_when(month <= 2 ~ "Spring-Summer",
+                            month >= 3 & month <= 5 ~"Autumn",
+                            month > 5 & month <= 8 ~ "Winter"))
+
+source("~/Desktop/WHOI/Codes/palettes/palette_years.R")
+
+stack_barplot <- ggplot() +
+  geom_bar(data = toto,
+           aes(x = factor(month), y = n_days, fill = factor(year)), col = "white", linewidth = .2,
+           position = "stack", stat = "identity") +
+  facet_wrap(pol~., labeller = labeller(pol = polynya_info_dict), ncol = 6, nrow = 3) +
+  xlab("Month")+
+  ylab("Number of days of data")+
+  scale_y_continuous(breaks = seq(0, 200, 20)) +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 20,face="bold"),
+        legend.text = element_text(size = 10), #__________ legend texts
+        legend.title = element_text(size = 17,face="bold"),
+        panel.background = element_rect(fill = "white"),
+        panel.grid.major = element_line(linewidth = 0.1, linetype = 'solid',
+                                        colour = "grey"), 
+        panel.grid.minor = element_line(linewidth = 0.1, linetype = 'solid',
+                                        colour = "grey")
+  ) +
+  scale_fill_manual(name = "Year", values = pal_years)
+
+ggsave(plot = stack_barplot, "~/Dropbox/data/outputs_Marthe_2023/polynya_usage/ndays_per_pol_per_month.png", height = 30, width = 40, units = c("cm"), dpi = 300)
+
+#---Barplot
+barplot <- ggplot() +
+  geom_bar(data = pol_usage_monthly,
+           aes(x = factor(month), y = n_days, fill = factor(year)),
+           stat = "identity") +
+  facet_grid(pol~year, labeller = labeller(pol = polynya_info_dict)) +
+  xlab("Month")+
+  ylab("Number of days with data")+
+  scale_y_continuous(breaks = seq(0, 31, 10)) +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 20,face="bold"),
+        legend.text = element_text(size = 10), #__________ legend texts
+        legend.title = element_text(size = 17,face="bold"),
+        panel.background = element_rect(fill = "white"),
+        panel.grid.major = element_line(linewidth = 0.1, linetype = 'solid',
+                                        colour = "grey"), 
+        panel.grid.minor = element_line(linewidth = 0.1, linetype = 'solid',
+                                        colour = NA)
+  ) +
+  scale_fill_manual(name = "Year", values = pal_years)
+
+ggsave(plot = barplot, "~/Dropbox/data/outputs_Marthe_2023/polynya_usage/ndays_per_pol_per_month_pol_year.png", height = 50, width = 80, units = c("cm"), dpi = 300)
+
+
+#---Boxplot of number of days with data by polynya and by year (with # obs)
+
+nobs <- pol_usage_monthly %>%
+  group_by(pol, month) %>%
+  reframe(n_obs = paste0("n=", n()),
+          y = 30)
+
+boxplot <- ggplot() +
+  geom_boxplot(data = pol_usage_monthly, aes(x = factor(month), y = n_days, color = factor(month)), fill = "grey", alpha = .6) +
+  geom_text(data = nobs, aes(x = factor(month), y = y + 5, label = n_obs), color = "darkgrey") +
+  facet_wrap(pol~., labeller = labeller(pol = polynya_info_dict), ncol = 3) +
+  xlab("Month")+
+  ylab("Number of days of data") +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 20,face="bold"),
+        legend.text = element_text(size = 10), #__________ legend texts
+        legend.title = element_text(size = 17,face="bold"),
+        panel.background = element_rect(fill = "white"),
+        panel.grid.major = element_line(linewidth = 0.1, linetype = 'solid',
+                                        colour = "grey"),
+        panel.grid.minor = element_line(linewidth = 0.1, linetype = 'solid',
+                                        colour = "grey")
+  )
+
+
+ggsave(plot = boxplot, "~/Dropbox/data/outputs_Marthe_2023/polynya_usage/ndays_per_pol_per_month_boxplot.png", height = 30, width = 35, units = c("cm"), dpi = 300)
+
 
 #==================================================================
 # NUMBER OF DIVES BY POLYNYA
@@ -109,7 +203,6 @@ plot_ndives_by_pol <-
   )
 
 ggsave(plot = plot_ndives_by_pol, "~/Dropbox/data/outputs_Marthe_2023/polynya_usage/barplot_dives_per_pol.png", height = 30, width = 25, units = c("cm"), dpi = 300)
-
 
 #==================================================================
 # NUMBER OF DIVES BY POLYNYA BETWEEN JUNE AND OCTOBER
