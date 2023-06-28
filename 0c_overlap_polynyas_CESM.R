@@ -2,6 +2,10 @@
 ## Script name: overlap_polynyas_CESM.R
 ##
 ## Purpose of script: Compute mean number of cells identified as polynyas by month that fall in polynya polygons
+##                    1) MONTHLY NCAR polynyas
+##                    2) POLYNYAS DEFINED BY OBSERVATION
+##                    3) BIMODAL BARPLOT BY MONTH => # CELLS
+##                    4) OVERLAP ON ONE LAYER
 ##
 ## Author: Marthe Vienne
 ## Modified by:
@@ -13,7 +17,8 @@
 ##
 ## ---------------------------
 ##
-## Notes: To have an idea of how many cells fall in individual polynyas polygons, the identification of polynya cells is required.
+## Notes: To have an idea of how many cells fall in individual polynyas polygons, 
+##        the identification of polynya cells is required.
 ##        Not done here.
 ##   
 ##

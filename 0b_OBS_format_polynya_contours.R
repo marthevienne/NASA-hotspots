@@ -5,7 +5,7 @@
 ##                    1) Transform CSV files containing all contours (2004-2019) by month into one dataframe
 ##                    2) Transform CSV files containing the biggest contour for each polynya by month
 ##                       into one dataframe
-##                    3) Compute the union of all polygons from (1) by month and by polynya. Result in dataframe 
+##                    3) Compute the union of all polygons from (1) by month and by polynya. Result in dataframe.
 ##
 ##
 ## Author: Marthe Vienne
@@ -22,20 +22,22 @@
 ##   
 ##
 ## ---------------------------
-rm(list=ls())
-
+## Working directory
+setwd("~/Desktop/WHOI/Data/polynyas_contours/OBS/")
+## ---------------------------
 ## Library
+library(dplyr)
 library(ggplot2)
+library(lubridate)
+## ---------------------------
+rm(list=ls())
 
 #==========================================================================================
 # 1) MULTIPLE POLYNYA CONTOURS (e.g. multiple contours per polynya, per year and per month)
 #==========================================================================================
 
-## Working directory
-setwd("~/Desktop/WHOI/Data/polynyas_contours/OBS/all_contours_per_month/")
-
 ## Monthly contours (biggest contour per polynya on all 12 months)
-files = list.files(pattern = "polynya_contours.csv")
+files = list.files(path = "all_contours_per_month", pattern = "polynya_contours.csv", full.names = T)
 length(files)
 
 ## Compile all polynyas contours in dataframe 
@@ -46,25 +48,22 @@ for (file in files) {
   n_month = sub("_.*", "", file)  
   pol = read.csv(file)
   colnames(pol) = c("ID", "num", "lon", "lat", "year")
-  pol = pol[which(!is.na(pol$lat)),] 
-  pol$month = month.name[as.numeric(n_month)]
+  pol <- pol %>%
+    filter(!(is.na(lat))) %>%
+    mutate(month = month.name[as.numeric(n_month)])
   polynya_df = rbind(polynya_df, pol)
 }
 
-
 ## Write csv
-write.csv(polynya_df, "OBS_multiple_polynyas_contours_df.csv", row.names = F)
+write.csv(polynya_df, "all_contours_per_month/OBS_multiple_polynyas_contours_df.csv", row.names = F)
 
 #===============================================================================================
 # 2) BIGGEST POLYNYA CONTOUR (e.g. one contour per polynya per month (biggest in all the years))
 #===============================================================================================
 rm(list=ls())
 
-## Working directory
-setwd("~/Desktop/WHOI/Data/polynyas_contours/OBS/biggest_contours_per_month/")
-
 ## Monthly contours (biggest contour per polynya on all 12 months)
-files = list.files(pattern = "polynya_contours.csv")
+files = list.files(path = "biggest_contours_per_month", pattern = "polynya_contours.csv", full.names = T)
 length(files)
 
 ## Compile all polynyas contours in dataframe 
@@ -75,19 +74,21 @@ for (file in files) {
   n_month = sub("_.*", "", file)  
   pol = read.csv(file)
   colnames(pol) = c("ID", "lon", "lat", "num")
-  pol = pol[which(!is.na(pol$lat)),] 
-  pol$month = month.name[as.numeric(n_month)]
+  pol <- pol %>%
+    filter(!(is.na(lat))) %>%
+    mutate(month = month.name[as.numeric(n_month)])
   polynya_df = rbind(polynya_df, pol)
 }
 
 ## Write csv
-write.csv(polynya_df, "OBS_biggest_polynyas_contours_df.csv", row.names = F)
+write.csv(polynya_df, "biggest_contours_per_month/OBS_biggest_polynyas_contours_df.csv", row.names = F)
 
 ## Some polynyas overlap (Utiskkar Bay and Darnley)
-pol_sub = subset(polynya_df, subset = ID == 11 | ID == 12)
+pol_sample <- polynya_df %>%
+  filter(ID == 11 | ID == 12)
 
 ggplot() +
-  geom_polygon(data = pol_sub, aes(x = lon, y = lat, group = interaction(ID, num), col = as.factor(ID)), fill = NA) +
+  geom_polygon(data = pol_sample, aes(x = lon, y = lat, group = interaction(ID, num), col = as.factor(ID)), fill = NA) +
   facet_wrap(~month)
 
 

@@ -1,10 +1,12 @@
 ##
-## Script name: polynya_contours
+## Script name: NCAR_polynya_contours
 ##
-## Purpose of script: 1) Open and rearrange polynya contours data from NCAR (netcdf) for SSMI and CESM data
-##                        => create list object with lon, lat, z (NA or 1)
-##                    2) Plot polynyas map
-##                    3) Identify polynya
+## Purpose of script: Format polynya netcdf to raster 
+##                    1) a. JRA-1p4 run | HI 0.4 threshold
+##                    1) b. JRA-1p4 run | AICE 85% threshold
+##                    2) POLYNYA RASTER TO DATAFRAME -> NECESSARY???
+##                    // 3) a. Run 1 | HI 0.4 threshold -> old //
+##                    // 3) b. SSMI | AICE 85% threshold -> old //
 ##
 ## Author: Marthe Vienne
 ##
@@ -18,35 +20,27 @@
 ##
 ##
 ## ---------------------------
-rm(list = ls())
-
+rm(list=ls())
+## ---------------------------
+## Working directory
+## ---------------------------
 ## Library
 library(ncdf4) # for netcdf manipulation
 library(lubridate)
 library(raster)
 library(dplyr)
-
-setwd("~/Dropbox/data/polynya_contours_NCAR_2023/Low res run/JRA_4p2z_run/")
+## ---------------------------
+rm(list = ls())
 
 ## Functions
 file.sources = list.files(path = "~/Desktop/WHOI/Codes/functions_raster/", pattern="*.R", full.names = T)
 sapply(file.sources, source, .GlobalEnv)
 
-## Path input
-path_input = "~/Dropbox/data/polynya_contours_NCAR_2023/Low res run/JRA_4p2z_run/"
-
-## Path output data
-path_output = "~/Desktop/WHOI/Data/polynyas_contours/NCAR/JRA_4p2z_run/"
-
-## Path output figure
-path_fig = ("~/Dropbox/data/outputs_Marthe_2023/polynya contours/")
-
 #==================================================================
 # 1) a. JRA-1p4 run | HI 0.4 threshold
 #==================================================================
 
-file =  paste0(path_input, "g.e22.GOMIPECOIAF_JRA-1p4-2018.TL319_g17.4p2z.001branch.monthly_clim.coastal_polynyas.hi_0.4mthresh.polynya_sh.2004-2021")
-
+file = "~/Dropbox/data/polynya_contours_NCAR_2023/Low res run/JRA_4p2z_run/g.e22.GOMIPECOIAF_JRA-1p4-2018.TL319_g17.4p2z.001branch.monthly_clim.coastal_polynyas.hi_0.4mthresh.polynya_sh.2004-2021"
 sink(paste0(file, "_metadata.txt"))
 print(nc_open(paste0(file, ".nc")))
 sink()
@@ -61,27 +55,28 @@ res <- netcdf_to_raster(
   tolerance = 0.0001
 )
 
-plot(res[[1]])
+plot(res[[1]]) #___test plot
 
-n_lyrs = res@data@nlayers
-res_id <- list()
-a <- 1
-for (lyr in 1:n_lyrs) {
-  res_id[[a]] <- identify_grouped_cells_raster(res[[lyr]])
-  a <- a + 1
-}
-res_id <- do.call(brick, res_id)
+## Identify cell clusters => id not consistent across layers
+# n_lyrs = res@data@nlayers
+# res_id <- list()
+# a <- 1
+# for (lyr in 1:n_lyrs) {
+#   res_id[[a]] <- identify_grouped_cells_raster(res[[lyr]])
+#   a <- a + 1
+# }
+# res_id <- do.call(brick, res_id)
+# names(res_id) <- month.name
 
 names(res) <- month.name
-names(res_id) <- month.name
 
-file_output = paste0(path_output, "g.e22.GOMIPECOIAF_JRA-1p4-2018.TL319_g17.4p2z.001branch.monthly_clim.coastal_polynyas.hi_0.4mthresh.polynya_sh.2004-2021.tif")
+file_output = "~/Desktop/WHOI/Data/polynyas_contours/NCAR/JRA_4p2z_run/g.e22.GOMIPECOIAF_JRA-1p4-2018.TL319_g17.4p2z.001branch.monthly_clim.coastal_polynyas.hi_0.4mthresh.polynya_sh.2004-2021.tif"
 res2 <- rast(res)
 terra::writeRaster(res2, file_output, overwrite = T)
 
-file_output_id = paste0(path_output, "ID_g.e22.GOMIPECOIAF_JRA-1p4-2018.TL319_g17.4p2z.001branch.monthly_clim.coastal_polynyas.hi_0.4mthresh.polynya_sh.2004-2021.tif")
-res_id2 <- rast(res_id)
-terra::writeRaster(res_id2, file_output_id, overwrite = T)
+# file_output_id = "~/Desktop/WHOI/Data/polynyas_contours/NCAR/JRA_4p2z_run/ID_g.e22.GOMIPECOIAF_JRA-1p4-2018.TL319_g17.4p2z.001branch.monthly_clim.coastal_polynyas.hi_0.4mthresh.polynya_sh.2004-2021.tif"
+# res_id2 <- rast(res_id)
+# terra::writeRaster(res_id2, file_output_id, overwrite = T)
 
 # raster::brick(filename) #____read raster stack
 
@@ -89,7 +84,7 @@ terra::writeRaster(res_id2, file_output_id, overwrite = T)
 # 1) b. JRA-1p4 run | AICE 85% threshold
 #==================================================================
 
-file =  paste0(path_input, "g.e22.GOMIPECOIAF_JRA-1p4-2018.TL319_g17.4p2z.001branch.monthly_clim.coastal_polynyas.aice_85%thresh.polynya_sh.2004-2021")
+file = "~/Dropbox/data/polynya_contours_NCAR_2023/Low res run/JRA_4p2z_run/g.e22.GOMIPECOIAF_JRA-1p4-2018.TL319_g17.4p2z.001branch.monthly_clim.coastal_polynyas.aice_85%thresh.polynya_sh.2004-2021"
 
 sink(paste0(file, "_metadata.txt"))
 print(nc_open(paste0(file, ".nc")))
@@ -107,35 +102,36 @@ res <- netcdf_to_raster(
 
 plot(res[[1]])
 
-n_lyrs = res@data@nlayers
-res_id <- list()
-a <- 1
-for (lyr in 1:n_lyrs) {
-  res_id[[a]] <- identify_grouped_cells_raster(res[[lyr]])
-  a <- a + 1
-}
-res_id <- do.call(brick, res_id)
+## Identify cell clusters => id not consistent across layers
+# n_lyrs = res@data@nlayers
+# res_id <- list()
+# a <- 1
+# for (lyr in 1:n_lyrs) {
+#   res_id[[a]] <- identify_grouped_cells_raster(res[[lyr]])
+#   a <- a + 1
+# }
+# res_id <- do.call(brick, res_id)
+# names(res_id) <- month.name
 
 names(res) <- month.name
-names(res_id) <- month.name
 
-file_output = paste0(path_output, "g.e22.GOMIPECOIAF_JRA-1p4-2018.TL319_g17.4p2z.001branch.monthly_clim.coastal_polynyas.aice_85%thresh.polynya_sh.2004-2021.tif")
+file_output = "~/Desktop/WHOI/Data/polynyas_contours/NCAR/JRA_4p2z_run/g.e22.GOMIPECOIAF_JRA-1p4-2018.TL319_g17.4p2z.001branch.monthly_clim.coastal_polynyas.aice_85%thresh.polynya_sh.2004-2021.tif"
 res2 <- rast(res)
 terra::writeRaster(res2, file_output, overwrite = T)
 
-file_output_id = paste0(path_output, "ID_g.e22.GOMIPECOIAF_JRA-1p4-2018.TL319_g17.4p2z.001branch.monthly_clim.coastal_polynyas.aice_85%thresh.polynya_sh.2004-2021.tif")
-res_id2 <- rast(res_id)
-terra::writeRaster(res_id2, file_output_id, overwrite = T)
+# file_output_id = "~/Desktop/WHOI/Data/polynyas_contours/NCAR/JRA_4p2z_run/ID_g.e22.GOMIPECOIAF_JRA-1p4-2018.TL319_g17.4p2z.001branch.monthly_clim.coastal_polynyas.aice_85%thresh.polynya_sh.2004-2021.tif"
+# res_id2 <- rast(res_id)
+# terra::writeRaster(res_id2, file_output_id, overwrite = T)
 
-# raster::brick(filename) #____read raster stack
+# raster::brick(filename) #____example read raster stack
 
 #==================================================================
-# 2) POLYNYA DATA TO DATAFRAME
+# 2) POLYNYA RASTER TO DATAFRAME
 #==================================================================
-# filename = paste0(path_output, "g.e22.GOMIPECOIAF_JRA-1p4-2018.TL319_g17.4p2z.001branch.monthly_clim.coastal_polynyas.aice_85%thresh.polynya_sh.2004-2021")
-# filename = paste0(path_output, "ID_g.e22.GOMIPECOIAF_JRA-1p4-2018.TL319_g17.4p2z.001branch.monthly_clim.coastal_polynyas.aice_85%thresh.polynya_sh.2004-2021")
-# filename = paste0(path_output, "g.e22.GOMIPECOIAF_JRA-1p4-2018.TL319_g17.4p2z.001branch.monthly_clim.coastal_polynyas.hi_0.4mthresh.polynya_sh.2004-2021")
-filename = paste0(path_output, "ID_g.e22.GOMIPECOIAF_JRA-1p4-2018.TL319_g17.4p2z.001branch.monthly_clim.coastal_polynyas.hi_0.4mthresh.polynya_sh.2004-2021")
+# filename = "~/Desktop/WHOI/Data/polynyas_contours/NCAR/JRA_4p2z_run/g.e22.GOMIPECOIAF_JRA-1p4-2018.TL319_g17.4p2z.001branch.monthly_clim.coastal_polynyas.aice_85%thresh.polynya_sh.2004-2021"
+# filename = "~/Desktop/WHOI/Data/polynyas_contours/NCAR/JRA_4p2z_run/ID_g.e22.GOMIPECOIAF_JRA-1p4-2018.TL319_g17.4p2z.001branch.monthly_clim.coastal_polynyas.aice_85%thresh.polynya_sh.2004-2021"
+# filename = "~/Desktop/WHOI/Data/polynyas_contours/NCAR/JRA_4p2z_run/g.e22.GOMIPECOIAF_JRA-1p4-2018.TL319_g17.4p2z.001branch.monthly_clim.coastal_polynyas.hi_0.4mthresh.polynya_sh.2004-2021"
+filename = "~/Desktop/WHOI/Data/polynyas_contours/NCAR/JRA_4p2z_run/ID_g.e22.GOMIPECOIAF_JRA-1p4-2018.TL319_g17.4p2z.001branch.monthly_clim.coastal_polynyas.hi_0.4mthresh.polynya_sh.2004-2021"
 
 r <- raster::brick(paste0(filename, ".tif")) #____read raster stack
 df = raster_to_df(r)
@@ -145,9 +141,7 @@ write.csv(df, paste0(filename, "_df.csv"), row.names = F)
 #==================================================================
 # 3) a. Run 1 | HI 0.4 threshold
 #==================================================================
-path_input = "~/Dropbox/data/polynya_contours_NCAR_2023/Low res run/run 1/"
-
-file =  paste0(path_input, "jra55_typical_polynya_mask_hi_0.4mthresh")
+file =  "~/Dropbox/data/polynya_contours_NCAR_2023/SSMI/jra55_typical_polynya_mask_hi_0.4mthresh" #___w/o extension
 
 sink(paste0(file, "_metadata.txt"))
 print(nc_open(paste0(file, ".nc")))
@@ -170,9 +164,7 @@ plot(hi_typ_id)
 #==================================================================
 # 3) b. SSMI | AICE 85% threshold
 #==================================================================
-path_input = "~/Dropbox/data/polynya_contours_NCAR_2023/SSMI/"
-
-file =  paste0(path_input, "ssmi_cdr_typical_polynya_mask_85%thresh")
+file =  "~/Dropbox/data/polynya_contours_NCAR_2023/SSMI/ssmi_cdr_typical_polynya_mask_85%thresh" #___w/o extension
 
 sink(paste0(file, "_metadata.txt"))
 print(nc_open(paste0(file, ".nc")))
