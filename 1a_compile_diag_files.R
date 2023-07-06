@@ -26,36 +26,26 @@
 ##
 ## ---------------------------
 rm(list=ls())
-
-## Path input data
-path_input = "~/Dropbox/data/diag_dive_ind_pol/"
-
-## Path output summary
-path_summary = "~/Desktop/WHOI/Data/summary_outputs/"
-
-## Path output data
-path_output = "~/Desktop/WHOI/Data/output_data/"
-
+## ---------------------------
+## Working directory
+setwd("~/Desktop/NASA-hotspots/")
+## ---------------------------
 ## Library
 library(readxl)
 library(lubridate)
 library(scriptName)
-
-## Get script name (used for source run)
-filename <- current_filename()
-filename <- sub(".*/", "", filename)
+## ---------------------------
+## Paths
+path_diag_files = "~/Dropbox/data/diag_dive_ind_pol/"
+path_summary = "~/Desktop/WHOI/Data/summary_outputs/"
+path_output = "~/Desktop/WHOI/Data/output_data/"
+## ---------------------------
+## Functions
+source("useful_functions/select_ARGOS_position.R")
+## ---------------------------
 
 ## Data input
-list_diag_files <- list.files(path = path_input, pattern = '_diag.xlsx', recursive = F)
-
-#===== FUNCTIONS ============================
-# select the most accurate position if duplicated ARGOS positions (in the next order: 3, 2, 1, 0, -1, -2, -9)
-select_ARGOS_position <- function(deployment, ref, date) {
-  positions = deployment[, 1:6][which(deployment$D_DATE == date & deployment$REF == ref),]
-  positions = positions[order(-positions$LQ),]
-  return(positions[1,])
-}
-#============================================
+list_diag_files <- list.files(path = path_diag_files, pattern = '_diag.xlsx', recursive = F)
 
 #==================================================================
 # 1) REMOVE TIME DUPLICATES IN ARGOS POSITIONS
@@ -69,7 +59,7 @@ end_deploy <- NULL
 for (file in list_diag_files) {
   print(file)
   deployment <-
-    read_excel(paste0(path_input, file))
+    read_excel(paste0(path_diag_files, file))
   names(deployment)[names(deployment) == 'ref'] <- 'REF'
   seals_deploy = unique(deployment$REF)
   for (seal in seals_deploy) {
