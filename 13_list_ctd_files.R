@@ -52,7 +52,7 @@ deploy <- seals %>%
 ## For each seal in each deployment, get ctd file path by order of resolution (hr2 > hr1)
 df_files <- data_frame(REF = seals$REF, ctd_file = NA)
 
-type = "ODV"
+# type = "ODV"
 type = "nc"
 
 for (d in deploy) {
