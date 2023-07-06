@@ -27,6 +27,7 @@ library(ggthemes) # theme_map()
 library(raster)
 library(terra)
 library(rnaturalearth)
+library(tidyterra)
 ## ---------------------------
 
 ## Continents
@@ -36,7 +37,9 @@ wm <- rnaturalearth::ne_download(returnclass = "sf", scale = "large") |>
   crop(bbox)
 
 ## Import residence time raster
-rt <- raster::brick("~/Desktop/WHOI/Data/output_data/RES_0.2_residence_time_season.tif") #____read raster stack
+rt <- raster::brick("~/Desktop/WHOI/Data/output_data/RES_CESM_LR_nseals_sum_pixel_season.tif") #____read raster stack
+res(rt)
+res_filename = "CESM_LR" #___variable in filename
 
 ## Crop raster?
 crop <- FALSE
@@ -46,27 +49,31 @@ if (crop) {
   rt <- crop(rt, bbox)
 }
 
+names(rt)
 ## Type of residence time
-type <- "MEAN" # "SUM" | "MEAN" | "REL"
+type <- "" # "SUM" | "MEAN" | "REL" | ""
 rt_type <- subset(rt, grep(type, names(rt)))
-lim <- c(0, max(values(rt_type), na.rm = T))
 max_val <- max(values(rt_type), na.rm = T)
 max_val
+max_val <- log(max_val)
+lim <- c(0, max_val)
 freq_break <- 1 # days in colorbar
 
 ## Map residence time
-limits <- c(0, 0.3, 1)# / rt[[type]]@data@max #___define limits
+limits <- c(0, 0.5, 1)# / rt[[type]]@data@max #___define limits
 breaks <- seq(0, ceiling(max_val), freq_break)
 rt_SR <- rast(rt_type)
 
 for (i in 1:nlayers(rt_type)) {
   ## Figure filename
-  file_name <- sprintf("~/Dropbox/data/outputs_Marthe_2023/residence_time/RES_%s_residence_time_season_%s.png", res(rt)[1], names(rt_SR)[i])
+  file_name <- sprintf("~/Dropbox/data/outputs_Marthe_2023/residence_time/RES_%s_nseals_sum_pixel_season_%s.png", res_filename, names(rt_SR)[i])
   
   map_RT <- ggplot() +  
-    geom_spatraster(data = rt_SR[[i]]) +
+    # geom_spatraster(data = rt_SR[[i]])+
+    geom_spatraster(data = log(rt_SR[[i]]))+
     geom_spatvector(data = wm) +
-    scale_fill_gradientn("Time spent \nin pixels (in days)", 
+    scale_fill_gradientn("Log of total number \nof seals in pixels", 
+    # scale_fill_gradientn("Time spent \nin pixels (in days)", 
                          colours = c("#FFFCE6","#FF0000FF", "#970000"), values = limits,
                          na.value = NA,
                          breaks = breaks, limits = lim) +
