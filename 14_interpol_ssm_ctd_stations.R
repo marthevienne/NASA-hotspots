@@ -23,6 +23,7 @@ rm(list=ls())
 ## Working directory
 ## ---------------------------
 ## Library
+library(dplyr)
 ## ---------------------------
 ## Paths
 ## ---------------------------
@@ -33,6 +34,8 @@ source("~/Desktop/NASA-hotspots/useful_functions/update_seals_table.R")
 stations <- readRDS("~/Desktop/WHOI/Data/output_data/ctd_stations_table")
 
 seals <- read.csv("~/Desktop/WHOI/Data/output_data/seals.csv")
+seals <- seals %>%
+  select(!contains("ctd"))
 seals$REF <- gsub("_", "-", seals$REF)
 
 seals %>%
@@ -73,7 +76,7 @@ north_boundary = -60
 # FALSE => all ctd locations are kept
 
 stations <- readRDS("~/Desktop/WHOI/Data/output_data/ctd_stations_table")
-SSM = readRDS("~/Desktop/WHOI/Data/output_data/predictedTracks_ssm_ctd")
+SSM = readRDS("~/Desktop/WHOI/Data/output_data/predictedTracks_ssm")
 seals <- read.csv("~/Desktop/WHOI/Data/output_data/seals.csv")
 
 df_interpol = NULL
