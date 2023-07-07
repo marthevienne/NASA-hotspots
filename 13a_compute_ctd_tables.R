@@ -15,7 +15,7 @@
 ##
 ## ---------------------------
 ##
-## Notes:
+## Notes: Error on netcdf ADJUSTED variables:  Contains the error on the adjusted values as determined by the delayed mode QC process
 ##   
 ##
 ## ---------------------------
@@ -121,6 +121,9 @@ files <- df_files %>% #___remove individuals with no ctd file
 
 i = 1
 
+## Example netcdf dump
+nc_open(files[1])
+
 for (file in files) {
   
   print(i)
@@ -130,6 +133,7 @@ for (file in files) {
   ## Reference
   ref <- ncatt_get(ncdf, varid = 0, attname = "smru_platform_code")
   ref <- ref$value
+  ref <- gsub("_", "-", ref)
   
   ## Number stations and depths
   nprof <- ncdf$dim$N_PROF$len
@@ -138,42 +142,17 @@ for (file in files) {
   ## Type
   # type = ???
   
-  ## Temperature (°C)
-  temp <- ncvar_get(ncdf, varid = "TEMP_ADJUSTED") %>% #___temperature
-    as_tibble() %>%
-    gather() %>%
-    pull(value)
-  tqc <- ncvar_get(ncdf, varid = "TEMP_ADJUSTED_QC") %>% #___temperature quality control
-    list_to_array()
-  tsd <- ncvar_get(ncdf, varid = "TEMP_ADJUSTED_ERROR") %>% #___temperature standard deviation
-    as_tibble() %>%
-    gather() %>%
-    pull(value)
-  
-  ## Salinity
-  sal <- ncvar_get(ncdf, varid = "PSAL_ADJUSTED") %>% #___salinity
-    as_tibble() %>%
-    gather() %>%
-    pull(value)
-  sqc <- ncvar_get(ncdf, varid = "PSAL_ADJUSTED_QC") %>% #___salinity quality control
-    list_to_array()
-  ssd <- ncvar_get(ncdf, varid = "PSAL_ADJUSTED_ERROR") %>% #___salinity standard deviation
-    as_tibble() %>%
-    gather() %>%
-    pull(value)
-  
   ## Time
   dates_j <- ncvar_get(ncdf, varid = "JULD") #___julian date: days since 1950-01-01 00:00:00 UTC
   dates <- as.POSIXct(as.Date(dates_j, origin = as.Date("1950-01-01 00:00:00")), tz = "UTC") #___POSIXct
-  days <- format(dates, format = "%m/%d/%Y") #___mm/dd/yyyy
-  time <- format(dates, format = "%H:%M") #___HH:MM
+  # days <- format(dates, format = "%m/%d/%Y") #___mm/dd/yyyy
+  # time <- format(dates, format = "%H:%M") #___HH:MM
   
   ## Position: not corrected with state-space model
   lat <- ncvar_get(ncdf, varid = "LATITUDE") #___°N
   lon <- ncvar_get(ncdf, varid = "LONGITUDE") #___°E
   PQC <- ncvar_get(ncdf, varid = "POSITION_QC") %>% #___ARGOS QC
     list_to_array()
-
   
   #------------------------------------------------------------------
   # (a) CTD STATIONS TABLE: REF, station, date, time, lon, lat, PQC
@@ -184,132 +163,77 @@ for (file in files) {
   
   stations_REF <- data_frame(REF = refs, 
                             station = stations,
-                            date = days,
-                            time = time,
+                            time = dates,
                             lon = lon,
                             lat = lat,
                             PQC = PQC)
   
+  stations_table <- rbind(stations_table, stations_REF)
+  
   #----------------------------------------------------------------------------
-  # (b) CTD PROFILES TABLE: REF, station, depth, temp, TQC, tsd, sal, SQC, ssd
+  # (b) CTD PROFILES TABLE: REF, station, depth, temp, TQC, terr, sal, SQC, serr
   #----------------------------------------------------------------------------
   
-  ## Depth
+  ## Temperature (°C)
+  temp <- ncvar_get(ncdf, varid = "TEMP_ADJUSTED") %>% #___temperature
+    as_tibble() %>%
+    gather() %>%
+    pull(value)
+  tqc <- ncvar_get(ncdf, varid = "TEMP_ADJUSTED_QC") %>% #___temperature quality control
+    list_to_array()
+  terr <- ncvar_get(ncdf, varid = "TEMP_ADJUSTED_ERROR") %>% #___temperature error: SEA TEMPERATURE ERROR IN SITU ITS-90 SCALE
+    as_tibble() %>%
+    gather() %>%
+    pull(value)
+
+  ## Salinity
+  psal <- ncvar_get(ncdf, varid = "PSAL_ADJUSTED") %>% #___practical salinity
+    as_tibble() %>%
+    gather() %>%
+    pull(value)
+  sqc <- ncvar_get(ncdf, varid = "PSAL_ADJUSTED_QC") %>% #___practical salinity quality control
+    list_to_array()
+  serr <- ncvar_get(ncdf, varid = "PSAL_ADJUSTED_ERROR") %>% #___practical salinity error: PRACTICAL SALINITY ERROR
+    as_tibble() %>%
+    gather() %>%
+    pull(value)
+
+  ## Depth 
   depth_array <- rep(seq(1:ndepth), nprof)
   # dqf <- ??????
-  
+
   ## Stations
   station_array <- rep(1:nprof, each = ndepth)
-  
+
   ## Reference
   ref_array <- rep(ref, nprof * ndepth)
-  
+
   profiles_REF <- data_frame(REF = ref_array,
                    station = station_array,
                    depth = depth_array,
-                   #DQC = 
+                   #DQC =
                    temp = temp,
                    TQC = tqc,
-                   tsd = tsd,
-                   sal = sal,
+                   terr = terr,
+                   psal = psal,
                    SQC = sqc,
-                   ssd = ssd
+                   serr = serr
                    )
-  
+
   profiles_REF <- profiles_REF %>%
     na.omit()
-  
-  stations_table <- rbind(stations_table, stations_REF)
+
   profiles_table <- rbind(profiles_table, profiles_REF)
   
   i = i + 1
   
 }
 
-saveRDS("~/Desktop/WHOI/Data/output_data/ctd_stations_table", stations_table)
-saveRDS("~/Desktop/WHOI/Data/output_data/ctd_profiles_table", profiles_table)
+stations_table <- stations_table %>%
+  mutate(id_ctd = seq(1 ,nrow(stations_table))) #___add unique CTD profile identifier
 
-
-
-
-
-
-
-
-
-profile <- data_frame(t = temp[,1], s = sal[,1], depth = seq(1:1000))
-
-profile <- profile %>%
-  filter(!is.na(t))
-
-plot(profile$t, -profile$depth)
-
-
-
-
-## Import CTD data
-
-ctd <- read.delim("~/Dropbox/data/data_oceanographic/ct109/ct109-939-14_ODV.txt", header = F, skip = 2)
-names(ctd) <- c("Cruise",	"Station",	"Type",	"mon/day/yr",	"hh:mm", "Longitude",	"Latitude",	"Depth",	"DQF", "Temperature",	"TQF",	"Salinity", "SQF", "ncdf")
-
-ctd <- ctd %>%
-  filter(Station == 1)
-
-plot(ctd$Temperature, -ctd$Depth)
-
-CTD <- read.delim("~/Dropbox/All_PHD_2/PHD/Projet_Weddell_Sea_2017/Seal_analysis_oceano/2_data_csv_interp/ct128-246BAT-12_ODV.txt", header=T)
-
-CTD <- read.delim("C:/Users/lucie/Documents/Master_MODE_Rennes/M2/Stage/Documents_StageM2/data_Lucie/data_oceanographic/ct36/ct36-A-09_ODV.txt", header=T)
-
-# names(data1)<-c("Cruise",	"Station",	"Type",	"mon/day/yr",	"hh:mm", "Longitude",	"Latitude",	"Depth",	"QF",
-#                 "Temperature",	"QF",	"Salinity", "QF")
-
-# data1<-nc_open("/Users/saralabrousse/Dropbox/All_PHD_2/PHD/Projet_Weddell_Sea_2017/Seal_analysis_oceano/4_data_netcdf_interp/ct128-246BAT-12_hr1_prof.nc")
-# print(data1)
-# lat <- ncvar_get(data,"Y_COORD")nlat <- dim(lat)head(lat)
-# lon <- ncvar_get(data,"X_COORD")nlon <- dim(lon)head(lon)
-
-a=which(nchar(CTD$mon_day_yr)==7)
-CTD$mon_day_yr[a]=paste(0,CTD$mon_day_yr[a],sep="")
-a=which(nchar(CTD$mon_day_yr)==9)
-#CTD$date_ctd[a]=paste(0,CTD$date_ctd[a],sep="")
-
-a=which(nchar(CTD$mon_day_yr)==8)
-
-library(stringr)
-CTD$mon_day_yr[a]=str_replace(CTD$mon_day_yr[a], "/17", "/2017")
-
-CTD$date_ctd <- paste(CTD$mon_day_yr, CTD$hh_mm,sep=" ")
-CTD$date_ctd <- as.character(CTD$date_ctd)
-CTD$date_ctd <- strptime(CTD$date_ctd, format="%m/%d/%Y %H:%M")
-
-c=which(CTD$Depth==0)
-c=which(CTD$Salinity==0)
-
-CTD$date=as.character(CTD$date_ctd)
-unic=unique(CTD$Station)
-
-#on enleve les stations où on a une seule valeur
-data1=data.frame()
-
-for (i in unic){
-  dt=CTD[CTD$Station==i,]
-  if (nrow(dt) > 1){
-    data1=rbind(data1,dt)
-  }
-}
-CTD=as.data.frame(data1)
-
-CTD$date_ctd=as.POSIXct(CTD$date_ctd,origin="1970-01-01",tz="GMT")
-CTD$month=as.numeric(format(CTD$date_ctd,format="%m"))
-CTD$id="ct128-246BAT-12"
-CTD=CTD[,c(1,2,3,4,5,6,7,8,10,12,14,16,17)]
-names(CTD)=c("Cruise", "Station", "Type", "mon.day.yr", "hh.mm", "longitude", 
-             "latitude", "depth", "temp", "salinity", "date","month","id")
-ctd1=CTD
-
-
-
+saveRDS(stations_table, "~/Desktop/WHOI/Data/output_data/ctd_stations_table")
+saveRDS(profiles_table, "~/Desktop/WHOI/Data/output_data/ctd_profiles_table")
 
 ## End script
 rm(list=ls())
