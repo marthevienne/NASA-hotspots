@@ -28,7 +28,6 @@ library(dplyr)
 ## Paths
 ## ---------------------------
 ## Functions
-source("~/Desktop/NASA-hotspots/useful_functions/update_seals_table.R")
 ## ---------------------------
 
 stations <- readRDS("~/Desktop/WHOI/Data/output_data/ctd_stations_table")

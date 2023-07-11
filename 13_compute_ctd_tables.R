@@ -232,10 +232,10 @@ for (file in files) {
 }
 
 stations_table <- stations_table %>%
-  mutate(id_ctd = seq(1 ,nrow(stations_table))) #___add unique CTD profile identifier
+  mutate(id_ctd = seq(1, nrow(stations_table))) #___add unique CTD profile identifier
 
 id_ctd_df <- stations_table %>%
-  select(c(REF, station, id_ctd))
+  select(c(REF, station, id_ctd)) #___to join
 
 profiles_table <- profiles_table %>%
   left_join(id_ctd_df, by = c("REF", "station")) #___add unique CTD profile identifier to profiles table
