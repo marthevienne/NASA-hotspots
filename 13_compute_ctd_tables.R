@@ -170,6 +170,8 @@ for (file in files) {
   
   stations_table <- rbind(stations_table, stations_REF)
   
+  ## Add max depth when construct CTD PROFILES TABLE (b)
+  
   #----------------------------------------------------------------------------
   # (b) CTD PROFILES TABLE: REF, station, depth, temp, TQC, terr, sal, SQC, serr
   #----------------------------------------------------------------------------
@@ -231,6 +233,30 @@ for (file in files) {
 
 stations_table <- stations_table %>%
   mutate(id_ctd = seq(1 ,nrow(stations_table))) #___add unique CTD profile identifier
+
+id_ctd_df <- stations_table %>%
+  select(c(REF, station, id_ctd))
+
+profiles_table <- profiles_table %>%
+  left_join(id_ctd_df, by = c("REF", "station")) #___add unique CTD profile identifier to profiles table
+
+length(unique(profiles_table$id_ctd)) #___less profiles than stations => some profiles have NA TS data
+
+## Remove profiles with NA data
+stations_table <- stations_table %>%
+  filter(id_ctd %in% profiles_table$id_ctd)
+
+max_depth_ctd <- profiles_table %>%
+  group_by(id_ctd) %>%
+  reframe(max_depth = max(depth, na.rm = T))
+
+stations_table <- stations_table %>%
+  left_join(max_depth_ctd, by = "id_ctd")
+
+## Check if every station in CTD profiles table is in CTD stations table => integer(0)
+profiles_table %>%
+  filter(!id_ctd %in% stations_table$id_ctd) %>%
+  pull(id_ctd)
 
 saveRDS(stations_table, "~/Desktop/WHOI/Data/output_data/ctd_stations_table")
 saveRDS(profiles_table, "~/Desktop/WHOI/Data/output_data/ctd_profiles_table")
