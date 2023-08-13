@@ -33,12 +33,9 @@ setwd("~/Desktop/NASA-hotspots/")
 ## Library
 library(readxl)
 library(lubridate)
-library(scriptName)
 ## ---------------------------
 ## Paths
 path_diag_files = "~/Dropbox/data/diag_dive_ind_pol/"
-path_summary = "~/Desktop/WHOI/Data/summary_outputs/"
-path_output = "~/Desktop/WHOI/Data/output_data/"
 ## ---------------------------
 ## Functions
 source("useful_functions/select_ARGOS_position.R")
@@ -86,10 +83,7 @@ summary$n.ARGOS.positions <- as.numeric(summary$n.ARGOS.positions)
 summary$n.dupli.dates <- as.numeric(summary$n.dupli.dates)
 
 ## Save summary
-write.csv(summary, file = paste0(path_summary, "summary_filter_duplicates_diag.csv"), row.names = F)
-if (length(nchar(filename)) != 0) {
-  print(paste0(filename, " : analysis summary saved in ", path_summary, "summary_filter_duplicates_diag.csv"))
-}
+write.csv(summary, file = "~/Desktop/WHOI/Data/summary_outputs/summary_filter_duplicates_diag.csv", row.names = F)
 
 ## Reformat data: make sure coordinates are numerical
 data$LAT <- gsub(',','.', data$LAT)
@@ -102,11 +96,8 @@ data$DATE = format(data$D_DATE, "%Y-%m-%d") #yyyy-mm-dd
 
 ## Save data as R object and CSV
 #Variables in data: {REF, PTT, D_Date, LQ, LAT, LON, DATE}
-file_output_diag =  paste0(path_output, "compiled_diag_rm_dupli_non_filtered_tracks")
+file_output_diag =  "~/Desktop/WHOI/Data/behavioural_data/compiled_diag_rm_dupli_non_filtered_tracks"
 saveRDS(data, file_output_diag)
-if (length(nchar(filename)) != 0) {
-  print(paste0(filename, " | ", "Diag data saved : " , file_output_diag))
-}
 
 #==================================================================
 # 3) CREATE SEALS TABLE
@@ -119,11 +110,8 @@ seals$end_track = end_deploy
 seals$dur_track = (end_deploy - start_deploy) / 3600 / 24
 
 ## Save compiled dive data
-file_output_seals =  paste0(path_output, "seals.csv")
+file_output_seals =  "~/Desktop/WHOI/Data/seals.csv"
 write.table(seals, file_output_seals, sep = ",", row.names = F, col.names = T)
-if (length(nchar(filename)) != 0) {
-  print(paste0(filename, " | ", "Seals table saved : ", file_output_seals))
-}
 
 ## End script
 rm(list=ls())
