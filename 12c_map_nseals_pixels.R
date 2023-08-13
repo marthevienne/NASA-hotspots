@@ -21,6 +21,7 @@
 rm(list=ls())
 ## ---------------------------
 ## Working directory
+setwd("~/Desktop/WHOI/Data/")
 ## ---------------------------
 ## Paths
 path_map <- "~/Dropbox/data/outputs_Marthe_2023/n_seals_pixels/"
@@ -34,7 +35,7 @@ library(tidyterra)
 ## ---------------------------
 
 ## Import raster
-file <- "~/Desktop/WHOI/Data/output_data/RES_0.2_nseals_sum_pixel_season.tif"
+file <- "output_data/nseals/tif/RES_CESM_LR_nseals_sum_pixel_months.tif"
 r <- raster::brick(file) #____read raster stack
 base.name <- sub(pattern = "(.*)\\..*$", replacement = "\\1", basename(file))
 
@@ -70,7 +71,7 @@ for (i in 1:nlayers(r)) {
   map <- ggplot() +  
     geom_spatraster(data = r_SR[[i]])+
     geom_spatvector(data = wm) +
-    scale_fill_gradientn("Mean number \nof seals in pixels", 
+    scale_fill_gradientn("Total number \nof seals in pixels", 
                          colours = c("#FFFCE6","#FF0000FF", "#970000"), values = limits,
                          na.value = NA,
                          breaks = breaks, limits = lim) +
