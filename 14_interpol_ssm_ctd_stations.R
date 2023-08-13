@@ -30,9 +30,9 @@ library(dplyr)
 ## Functions
 ## ---------------------------
 
-stations <- readRDS("~/Desktop/WHOI/Data/output_data/ctd_stations_table")
+stations <- readRDS("~/Desktop/WHOI/Data/ctd_data/ctd_stations_table")
 
-seals <- read.csv("~/Desktop/WHOI/Data/output_data/seals.csv")
+seals <- read.csv("~/Desktop/WHOI/Data/seals.csv")
 seals <- seals %>%
   select(!contains("ctd"))
 seals$REF <- gsub("_", "-", seals$REF)
@@ -40,7 +40,7 @@ seals$REF <- gsub("_", "-", seals$REF)
 seals %>%
   filter(!REF %in% stations$REF) %>%
   filter(visit_polynya == "yes") %>%
-  select(c(REF, has_dives, visit_polynya))
+  select(c(REF, has_dives, visit_polynya)) # either seals with no ctd files or with NA ctd data
 
 length(unique(stations$REF))
 
@@ -57,7 +57,7 @@ northern_boundary <- -60
 stations <- stations %>%
   filter(is.na(lat) | lat < northern_boundary)
 
-file_loc = "~/Desktop/WHOI/Data/output_data/ctd_stations_table_north_bound"
+file_loc = "~/Desktop/WHOI/Data/ctd_stations_table_north_bound"
 saveRDS(stations, file_loc)
 
 step1 <- stations %>%
@@ -67,7 +67,7 @@ step1 <- stations %>%
 seals <- seals %>% left_join(step1, by = "REF")
 
 ## Save updated seals table ======================================
-file_output_seals =  "~/Desktop/WHOI/Data/output_data/seals.csv"
+file_output_seals =  "~/Desktop/WHOI/Data/seals.csv"
 write.table(seals, file_output_seals, sep = ",", row.names = F, col.names = T)
 ##================================================================
 
@@ -76,15 +76,15 @@ write.table(seals, file_output_seals, sep = ",", row.names = F, col.names = T)
 #==================================================================
 rm(list=ls())
 
-filter_on_ssm_accuracy = TRUE
-threshold = 10 #km
+threshold = 5 #km
 north_boundary = -60
+filter_on_ssm_accuracy = FALSE
 # TRUE => ctd stations closest in time from poorly accurate predicted locations are filtered with a upper threshold on standard error. 
 # FALSE => all ctd locations are kept
 
-stations <- readRDS("~/Desktop/WHOI/Data/output_data/ctd_stations_table_north_bound")
-SSM = readRDS("~/Desktop/WHOI/Data/output_data/predictedTracks_ssm")
-seals <- read.csv("~/Desktop/WHOI/Data/output_data/seals.csv")
+stations <- readRDS("~/Desktop/WHOI/Data/ctd_data/ctd_stations_table_north_bound")
+SSM = readRDS("~/Desktop/WHOI/Data/bssm/predictedTracks_ssm")
+seals <- read.csv("~/Desktop/WHOI/Data/seals.csv")
 
 df_interpol = NULL
 seals = unique(SSM$id)
@@ -102,7 +102,7 @@ for (p in 1:length(seals)) {
     qual_index$y.se = unlist(sapply(sa$time, function(x) ssm$y.se[which(abs(x - ssm$date) == min(abs(x - ssm$date)))[1]])) 
     
     if (nrow(qual_index) > 0) {
-      rm_rows <- subset(qual_index, x.se > threshold | y.se > threshold)
+      rm_rows <- subset(qual_index, sqrt(x.se^2 + y.se^2) > threshold)
       sa <- sa %>% filter(!(id_ctd %in% rm_rows$`sa$id_ctd`))
     }
   }
@@ -117,11 +117,11 @@ for (p in 1:length(seals)) {
 
 nrow(df_interpol) / nrow(stations) * 100 #___ % kept stations
 
-file_interp_loc = "~/Desktop/WHOI/Data/output_data/ctd_stations_table_interp"
+file_interp_loc = "~/Desktop/WHOI/Data/ctd_data/ctd_stations_table_interp"
 saveRDS(df_interpol, file_interp_loc)
 
 # Step2: number of CTD profiles after estimation of location (interpLat != NA)
-seals <- read.csv("~/Desktop/WHOI/Data/output_data/seals.csv")
+seals <- read.csv("~/Desktop/WHOI/Data/seals.csv")
 
 df_interpol <- df_interpol %>%
   filter(!is.na(interpLat))
@@ -144,11 +144,11 @@ step3 <- df_interpol %>%
 
 seals <- seals %>% left_join(step3, by = "REF")
 
-file_interp_loc = "~/Desktop/WHOI/Data/output_data/ctd_stations_table_north_bound_interp"
+file_interp_loc = "~/Desktop/WHOI/Data/ctd_data/ctd_stations_table_north_bound_interp"
 saveRDS(df_interpol, file_interp_loc)
 
 ## Save updated seals table ======================================
-file_output_seals =  "~/Desktop/WHOI/Data/output_data/seals.csv"
+file_output_seals =  "~/Desktop/WHOI/Data/seals.csv"
 write.table(seals, file_output_seals, sep = ",", row.names = F, col.names = T)
 ##================================================================
 
@@ -157,7 +157,7 @@ write.table(seals, file_output_seals, sep = ",", row.names = F, col.names = T)
 #==================================================================
 rm(list=ls())
 
-seals <- read.csv("~/Desktop/WHOI/Data/output_data/seals.csv")
+seals <- read.csv("~/Desktop/WHOI/Data/seals.csv")
 
 summary_ctd <- seals %>%
   select(contains("ctd"))
@@ -180,7 +180,6 @@ print(tot / tot[1] * 100)
 cat("\n")
 sink()
 #----------------
-
 
 ## End script
 rm(list=ls())
