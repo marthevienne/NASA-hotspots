@@ -19,19 +19,6 @@
 ## ---------------------------
 rm(list = ls())
 
-## Get script name (used for source run)
-filename <- current_filename()
-filename <- sub(".*/", "", filename)
-
-## Path input data
-path_input = "~/Desktop/WHOI/Data/output_data/"
-
-## Path output data
-path_output = "~/Desktop/WHOI/Data/output_data/"
-
-## Path to save output figures
-path_fig <- "~/Dropbox/data/outputs_Marthe_2023/ssm_SES/"
-
 ## Library
 #install.packages("aniMotum",
 #                 repos = c("https://cloud.r-project.org",
@@ -47,7 +34,7 @@ library(tibble)
 
 
 ## Data input
-bssm <- readRDS(paste0(path_input, "tracks_for_bssm"))
+bssm <- readRDS("~/Desktop/WHOI/Data/bssm/tracks_for_bssm")
 bssm$date <- as.POSIXct(bssm$date, origin = "1970-01-01", tz = "GMT")
 str(bssm)
 
@@ -55,6 +42,8 @@ str(bssm)
 
 foo <- data.frame()
 foo2 <- data.frame()
+
+path_fig <- "~/Dropbox/data/outputs_Marthe_2023/ssm_SES/"
 
 for (i in 1:length(unique(bssm$id))) {
   ## Individual i
@@ -139,20 +128,11 @@ for (i in 1:length(unique(bssm$id))) {
 
 
 ## Write foo as R object and CSV
-file_pred_SSM = paste0(path_output,  "predictedTracks_ssm")
+file_pred_SSM = "~/Desktop/WHOI/Data/bssm/predictedTracks_ssm"
 saveRDS(foo, file_pred_SSM)
-#write.csv(foo, "predictedTracks_ssm.csv", row.names = F)
 
-if (length(nchar(filename)) != 0) {
-  print(paste0(filename, " | ", "SSM predicted tracks saved : ", file_pred_SSM))
-}
-
-file_fitt_BSSM = paste0(path_output,  "fittedTracks_ssm_behavior")
+file_fitt_BSSM = "~/Desktop/WHOI/Data/bssm/fittedTracks_ssm_behavior"
 saveRDS(foo2, file_fitt_BSSM)
-#write.csv(foo2, "fittedTracks_ssm_behavior.csv", row.names = F)
-if (length(nchar(filename)) != 0) {
-  print(paste0(filename, " | ", "BSSM fitted tracks saved : ", file_fitt_BSSM))
-}
 
 ## Track plots
 # my.pal = "Viridis" # Common pal along the work -> save in
@@ -160,7 +140,6 @@ if (length(nchar(filename)) != 0) {
 # ggplot(foo, aes(x = lon, y = lat, colour = id)) +
 #   geom_point(size = .2, show.legend = FALSE) +
 #   coord_quickmap()
-
 
 ## End script
 rm(list=ls())
