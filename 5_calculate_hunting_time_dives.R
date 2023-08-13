@@ -21,25 +21,29 @@
 rm(list=ls())
 ## ---------------------------
 ## Working directory
-setwd("~/Desktop/WHOI/Data/output_data/")
+setwd("~/Desktop/WHOI/Data/behavioural_data/")
 ## ---------------------------
 ## Library
 library(dplyr)
 ## ---------------------------
 
 ## Dive data
-dives <- readRDS("dive_metrics_V2")
+dives <- readRDS("dive_metrics_bottime_speed_interp_2")
 str(dives)
 
 ## Dive profiles
 profiles <- readRDS("dives_profiles")
 
-## Calculate speed for each segment
+## Calculate speed for each segment and get mean depth of each hunting segments
 profiles_speed <- profiles %>%
   group_by(REF, NUM) %>%
-  reframe(speed_seg = abs(diff(depth))/diff(time),
-          Tdiff = diff(time)) %>%
-  filter(speed_seg <= 0.4) #___ref article
+  reframe(Tdiff = c(diff(time), NA),
+          Ddiff = c(diff(depth), NA),
+          mean_depth_HS = depth + c(diff(depth)/2, NA)) %>%
+  mutate(speed_seg = abs(Ddiff/Tdiff)) %>%
+  filter(speed_seg <= 0.4 & speed_seg > 0) #___ref article
+
+saveRDS(profiles_speed, "hunting_time_segments") ##___save table with hunting time segments
 
 ## Calculate hunting time => sum of time segment with speed <= 0.4 m/s
 hunting_time <- profiles_speed %>%
@@ -50,10 +54,10 @@ hunting_time <- profiles_speed %>%
 dives <- dives %>% left_join(hunting_time, by = c('REF','NUM'))
 dives$hunting_time[is.na(dives$hunting_time)] = 0 #___put NA hunting time to 0
 
-summary(dives$hunting_time)
+summary(dives$hunting_time)/60 #___min
 
 ## Save dives
-saveRDS(dives, "dive_metrics_V3")
+saveRDS(dives, "dive_metrics_bottime_speed_interp_hunttime_3")
 
 ## End script
 rm(list=ls())

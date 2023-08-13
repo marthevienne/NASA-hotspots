@@ -20,23 +20,22 @@
 rm(list=ls())
 ## ---------------------------
 ## Working directory
-setwd("~/Desktop/WHOI/Data/output_data/")
+setwd("~/Desktop/WHOI/Data/behavioural_data/")
 ## ---------------------------
 ## Library
 library(dplyr)
 ## ---------------------------
 
-## Mean depth of longer segment
-
 ## Dive metrics
-dives <- readRDS("dive_metrics_V3")
+dives <- readRDS("dive_metrics_bottime_speed_interp_hunttime_3")
 
 ## Dive profiles
 profiles <- readRDS("dives_profiles")
 
 seg <- profiles %>%
   group_by(REF, NUM) %>%
-  reframe(Tdiff = c(diff(time), NA), mean_depth = depth + c(diff(depth)/2, NA)) %>%
+  reframe(Tdiff = c(diff(time), NA), 
+          mean_depth = depth + c(diff(depth)/2, NA)) %>%
   na.omit()
 
 time_long_seg <- seg %>%

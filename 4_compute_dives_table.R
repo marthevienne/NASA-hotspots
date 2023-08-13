@@ -19,18 +19,20 @@
 ##
 ## ---------------------------
 rm(list=ls())
-
+## ---------------------------
+## Working directory
+## ---------------------------
 ## Library
 library(ggplot2)
-library(scriptName)
-
-## Get script name (used for source run)
-filename <- current_filename()
-filename <- sub(".*/", "", filename)
+## ---------------------------
+## Paths
+## ---------------------------
+## Functions
+## ---------------------------
 
 ## Data input
-seals = read.csv("~/Desktop/WHOI/Data/output_data/seals.csv")
-dives = readRDS("dive_metrics_V2")
+seals = read.csv("~/Desktop/WHOI/Data/seals.csv")
+dives = readRDS("~/Desktop/WHOI/Data/behavioural_data/dive_metrics_bottime_speed_interp_2")
 
 #==================================================================
 # CREATE DIVES TABLE {REF, NUM, time, depth}
@@ -61,12 +63,8 @@ dives_SES$depth = as.numeric(dives_SES$depth)
 dives_SES$time = as.numeric(dives_SES$time)
 
 ## Save dives table as R object
-file_output = "~/Desktop/WHOI/Data/output_data/dives_profiles"
+file_output = "~/Desktop/WHOI/Data/behavioural_data/dives_profiles"
 saveRDS(dives_SES, file_output)
-#write.csv(dives_SES, "dives_table.csv", row.names = F)
-if (length(nchar(filename)) != 0) {
-  print(paste0(filename, " | ", "Dive table saved : ", file_output))
-}
 
 ## End script
 rm(list=ls())
