@@ -17,40 +17,30 @@
 ## ---------------------------
 ##
 ## Notes:
-##        
-##
+##   
 ##
 ## ---------------------------
-rm(list = ls())
-
-source("~/Desktop/WHOI/Codes/update_seals_table.R")
-source("~/Desktop/WHOI/Codes/useful_functions/my_SSM_filter.R")
-
-## Path input data
-path_input = "~/Desktop/WHOI/Data/output_data/"
-
-## Path output data
-path_output = "~/Desktop/WHOI/Data/output_data/"
-
-## Path to save output figures
-path_fig = "~/Dropbox/data/outputs_Marthe_2023/"
-
-## Path output summary 
-file_summary = "~/Desktop/WHOI/Data/summary_outputs/summary_filt_dives_output.txt"
-
+rm(list=ls())
+## ---------------------------
+## Working directory
+## ---------------------------
 ## Library
 library(dplyr)
 library(readxl)
 library(ggplot2)
 library(scriptName)
-
-## Get script name (used for source run)
-filename <- current_filename()
-filename <- sub(".*/", "", filename)
+## ---------------------------
+## Paths
+path_fig = 
+## ---------------------------
+## Functions
+source("~/Desktop/WHOI/Codes/update_seals_table.R")
+source("~/Desktop/WHOI/Codes/useful_functions/my_SSM_filter.R")
+## ---------------------------
 
 ## Data input
-dives <- readRDS(paste0(path_input, "compiled_rm_dupli_dives"))
-seals <- read.csv(paste0(path_input, "seals.csv"))
+dives <- readRDS("~/Desktop/WHOI/Data/behavioural_data/compiled_rm_dupli_dives")
+seals <- read.csv("~/Desktop/WHOI/Data/seals.csv")
 
 #==================================================================
 # 1) ASSIGN A NUMBER TO EACH DIVE (NOT UNIQUE) 
@@ -74,12 +64,8 @@ rm(subset_dives)
 rm(dives)
 
 ## Save numbered dive dives_num
-file_dives_num = paste0(path_output, "non_filtered_numbered_dives")
+file_dives_num = "~/Desktop/WHOI/Data/behavioural_data/non_filtered_numbered_dives"
 saveRDS(dives_num, file_dives_num)
-#write.csv(dives_num, file =  file_dives_num, row.names = FALSE)
-if (length(nchar(filename)) != 0) {
-  print(paste0(filename, " | ", "Numbered dive data saved : ", file_dives_num))
-}
 
 rm(dives_num)
 
@@ -87,7 +73,7 @@ rm(dives_num)
 # 2) FILTERING WORKFLOW
 #==================================================================
 
-dives_num <- readRDS(paste0(path_input, "non_filtered_numbered_dives"))
+dives_num <- readRDS("~/Desktop/WHOI/Data/behavioural_data/non_filtered_numbered_dives")
 
 #Step0: figures before filtering dives
 indiv = unique(dives_num$REF)
@@ -108,6 +94,7 @@ p3 = length(which(is.na(dives_num$DE_DATE))) / length(dives_num$DE_DATE) * 100
 p4 = length(which(dives_num$T1 == 0)) / length(dives_num$T1) * 100
 
 #-----Save summary output
+file_summary = "~/Desktop/WHOI/Data/summary_outputs/summary_filt_dives_output.txt"
 {
   sink(file_summary)
   cat("=============================\n")
@@ -129,9 +116,10 @@ rm(p2)
 rm(p3)
 rm(p4)
 
+fig_name <- "~/Dropbox/data/outputs_Marthe_2023/MAX_DEP_VS_DIVE_DUR_scatter_plot_bf_filt.png"
 {
   png(
-    paste0(path_fig, "MAX_DEP_VS_DIVE_DUR_scatter_plot_bf_filt.png"),
+    fig_name,
     width = 1000,
     height = 1000,
     res = 150
@@ -161,8 +149,8 @@ seals <- update_seals_table(dives_num, seals, "n_dives_stp4")
 
 #Step 5
 dives_num <-
-    dives_num[dives_num$T1 < dives_num$T2 &
-                dives_num$T2 < dives_num$T3 & dives_num$T3 < dives_num$T4,]
+  dives_num[dives_num$T1 < dives_num$T2 &
+              dives_num$T2 < dives_num$T3 & dives_num$T3 < dives_num$T4,]
 seals <- update_seals_table(dives_num, seals, "n_dives_stp5")
 
 #Step 6
@@ -170,17 +158,13 @@ dives_num <- dives_num[dives_num$MAX_DEP < 2000, ]
 seals <- update_seals_table(dives_num, seals, "n_dives_stp6")
 
 ## Save updated seals table ======================================
-file_output_seals =  "~/Desktop/WHOI/Data/output_data/seals.csv"
+file_output_seals =  "~/Desktop/WHOI/Data/seals.csv"
 write.table(seals, file_output_seals, sep = ",", row.names = F, col.names = T)
 ##================================================================
 
 ## Save filtered dives (tracks non corrected)
-file_filt_dives_num = paste0(path_output, "filtered_numbered_dives")
+file_filt_dives_num = "~/Desktop/WHOI/Data/behavioural_data/filtered_numbered_dives"
 saveRDS(dives_num, file_filt_dives_num)
-#write.csv(dives_num, file = file_filt_dives_num, row.names = FALSE)
-if (length(nchar(filename)) != 0) {
-  print(paste0(filename, " | ", "Filtered numbered dive data saved : ", file_filt_dives_num))
-}
 
 #==================================================================
 # PRELIMINARY PLOTS ON DIVE dives_num (after filtering)
@@ -190,7 +174,7 @@ if (length(nchar(filename)) != 0) {
 
 {
   pdf(
-    paste0(path_fig, "histograms_dives_all_dives_num_SES_after_filt.pdf"),
+    "~/Dropbox/data/outputs_Marthe_2023/histograms_dives_all_dives_num_SES_after_filt.pdf",
     height = 5,
     width = 6
   )
@@ -215,7 +199,7 @@ if (length(nchar(filename)) != 0) {
 
 {
   png(
-    paste0(path_fig, "MAX_DEP_VS_DIVE_DUR_scatter_plot_after_filt.png"),
+    "~/Dropbox/data/outputs_Marthe_2023/MAX_DEP_VS_DIVE_DUR_scatter_plot_after_filt.png",
     width = 1000,
     height = 1000,
     res = 150
@@ -228,21 +212,20 @@ if (length(nchar(filename)) != 0) {
 rm(dives_num)
 
 #=====================================================================================================
-# 3) COMPUTE NEW VARIABLES: BOTT_TIME, SURF_DUR, SPEED_DESC, SPEED_ASC, D0, Df, T0, T1, T2, T3, T4, Tf 
+# 3) COMPUTE NEW VARIABLES: BOTT_TIME, SPEED_DESC, SPEED_ASC, D0, Df, T0, T1, T2, T3, T4, Tf 
 #     => T in sec since 01/01/1970
 #     /!\ locations are not estimated at that point with BSSM output
 #=====================================================================================================
 # rm(list=ls())
 
-seals = read.csv("~/Desktop/WHOI/Data/output_data/seals.csv")
-dives_num = readRDS("~/Desktop/WHOI/Data/output_data/filtered_numbered_dives")
+seals = read.csv("~/Desktop/WHOI/Data/seals.csv")
+dives_num = readRDS("~/Desktop/WHOI/Data/behavioural_data/filtered_numbered_dives")
 dives_num = dives_num[dives_num$MAX_DEP >= 5,]
 
-source("~/Desktop/WHOI/Codes/update_seals_table.R")
 seals <- update_seals_table(dives_num, seals, "n_dives_below_5m")
 
 ## Save updated seals table ======================================
-file_output_seals =  "~/Desktop/WHOI/Data/output_data/seals.csv"
+file_output_seals =  "~/Desktop/WHOI/Data/seals.csv"
 write.table(seals, file_output_seals, sep = ",", row.names = F, col.names = T)
 ##================================================================
 
@@ -287,7 +270,7 @@ for (index in 1:nrow(df_dives)) {
   interp <- approx(tim, ref_depth, xout = seq_t, method = "linear")
   bottdep <- 0.8 * dive$MAX_DEP # ?????? HOW IS IT DEFINED?
   t <- interp$x[interp$y >= bottdep]
-
+  
   if (length(t) != 0) {
     T1_BP <- c(T1_BP, t[1])
     Tf_BP <- c(Tf_BP, t[length(t)])
@@ -310,14 +293,11 @@ df_dives = subset(df_dives, select = c(REF, NUM, SOL_ANGLE, MAX_DEP, DIVE_DUR, B
 
 
 ## Save updated dive summary
-file_metrics_dives = paste0(path_output, "dive_metrics_V1")
+file_metrics_dives = "~/Desktop/WHOI/Data/behavioural_data/dive_metrics_bottime_speed"
 saveRDS(df_dives, file_metrics_dives)
-#write.csv(df_dives, file = file_metrics_dives, row.names = FALSE)
-if (length(nchar(filename)) != 0) {
-  print(paste0(filename, " | ", "Metrics dives table saved : ", file_metrics_dives))
-}
 
 rm(list = c(dives_num, df_dives))
+
 
 #==================================================================
 # 4) ESTIMATE DIVES LOCATIONS WITH BSSM
@@ -330,13 +310,13 @@ north_boundary = -60
 # TRUE => dives closest in time from poorly accurate predicted locations are filtered with a upper threshold on standard error. 
 # FALSE => all dive locations are kept
 
-dives <- readRDS("~/Desktop/WHOI/Data/output_data/dive_metrics_V1")
+dives <- readRDS("~/Desktop/WHOI/Data/behavioural_data/dive_metrics_bottime_speed_1")
 dives$DE_DATE <- as.POSIXct(dives$DE_DATE, origin = "1970-01-01", tz = "GMT")
 str(dives)
 
-BSSM = readRDS("~/Desktop/WHOI/Data/output_data/predictedTracks_ssm")
+BSSM = readRDS("~/Desktop/WHOI/Data/bssm/predictedTracks_ssm")
 
-seals <- read.csv("~/Desktop/WHOI/Data/output_data/seals.csv")
+seals <- read.csv("~/Desktop/WHOI/Data/seals.csv")
 
 df_dives_interpol = NULL
 seals = unique(BSSM$id)
@@ -377,16 +357,13 @@ range(df_dives_interpol$interpLat, na.rm = T)
 seals <- update_seals_table(df_dives_interpol, seals, "n_dives_SSM_filter")
 
 ## Save updated seals table ======================================
-file_output_seals =  "~/Desktop/WHOI/Data/output_data/seals.csv"
+file_output_seals =  "~/Desktop/WHOI/Data/seals.csv"
 write.table(seals, file_output_seals, sep = ",", row.names = F, col.names = T)
 ##================================================================
 
 ## Save dives with interpolated locations in R object
-file_metrics_dives_interp_loc = "~/Desktop/WHOI/Data/output_data/dive_metrics_V2"
+file_metrics_dives_interp_loc = "~/Desktop/WHOI/Data/behavioural_data/dive_metrics_bottime_speed_interp_2"
 saveRDS(df_dives_interpol, file_metrics_dives_interp_loc)
-if (length(nchar(filename)) != 0) {
-  print(paste0(filename, " | ", "Dive metrics table saved : ", file_metrics_dives_interp_loc))
-}
 
 ## End script 
 rm(list=ls())
