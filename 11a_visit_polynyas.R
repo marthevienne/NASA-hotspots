@@ -19,13 +19,19 @@
 ## ---------------------------
 rm(list=ls())
 ## ---------------------------
+## Working directory
+setwd("~/Desktop/WHOI/Data/")
+## ---------------------------
 ## Library
 ## ---------------------------
-
+## Paths
+## ---------------------------
+## Functions
 source("~/Desktop/WHOI/Codes/update_seals_table.R")
+## ---------------------------
 
-seals <- read.csv("~/Desktop/WHOI/Data/output_data/seals.csv")
-dives <- readRDS("~/Desktop/WHOI/Data/output_data/dive_metrics_V7")
+seals <- read.csv("~/Desktop/WHOI/Data/seals.csv")
+dives <- readRDS("~/Desktop/WHOI/Data/behavioural_data/dive_metrics_bottime_speed_interp_hunttime_bathy_zone_mode_pol_7")
 
 seals_in_pol <- dives %>%
   group_by(REF) %>%
@@ -51,8 +57,8 @@ nrow(new_dives) / nrow(dives) * 100 #___95.8 %
 seals <- update_seals_table(new_dives, seals, "n_dives_visit_polynya")
 
 ## Save seals table and dives table
-saveRDS(new_dives, "~/Desktop/WHOI/Data/output_data/dive_metrics_V8")
-write.csv(seals, "~/Desktop/WHOI/Data/output_data/seals.csv", row.names = F)
+saveRDS(new_dives, "behavioural_data/dive_metrics_bottime_speed_interp_hunttime_bathy_zone_mode_pol_inpol_8")
+write.csv(seals, "seals.csv", row.names = F)
 
 ## End script
 rm(list=ls())
