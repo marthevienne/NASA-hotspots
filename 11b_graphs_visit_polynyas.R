@@ -21,6 +21,7 @@
 rm(list=ls())
 ## ---------------------------
 ## Working directory
+setwd("~/Desktop/WHOI/Data/")
 ## ---------------------------
 ## Library
 library(dplyr)
@@ -28,16 +29,17 @@ library(wesanderson)
 remotes::install_github("coolbutuseless/ggpattern")
 library(ggpattern)
 ## ---------------------------
-
-## Palette polynyas
+## Palette
 source("~/Desktop/WHOI/Codes/palettes/palette_polynya.R") #___palette polynyas (1-21)
+source("~/Desktop/WHOI/Codes/palettes/palette_years.R")
+## ---------------------------
 
 ## Polynya info
 polynya_info <- read.csv("~/Desktop/WHOI/Data/polynyas_contours/OBS/ID_polynyas_Esther.csv", sep = ";")
 polynya_info_dict <- polynya_info[,2] #___as dictionnary (fill labels)
 names(polynya_info_dict) = polynya_info$ID
 
-dives <- readRDS("~/Desktop/WHOI/Data/output_data/dive_metrics_V8")
+dives <- readRDS("behavioural_data/dive_metrics_bottime_speed_interp_hunttime_bathy_zone_mode_pol_inpol_8")
 dives <- dives %>%
   mutate(month = month(DE_DATE),
          year = year(DE_DATE)) #___add month and year to dives
@@ -99,7 +101,6 @@ pol_usage_monthly <- dives %>%
                             month >= 3 & month <= 5 ~"Autumn",
                             month > 5 & month <= 8 ~ "Winter"))
 
-source("~/Desktop/WHOI/Codes/palettes/palette_years.R")
 
 stack_barplot <- ggplot() +
   geom_bar(data = toto,
