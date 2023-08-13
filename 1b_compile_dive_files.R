@@ -16,24 +16,22 @@
 ## ---------------------------
 ##
 ## Notes:
-##
+##   
 ##
 ## ---------------------------
-rm(list = ls())
-
-## Path input data
+rm(list=ls())
+## ---------------------------
+## Working directory
 path_input = "~/Dropbox/data/diag_dive_ind_pol/"
-
-## Path output data
-path_output = "~/Desktop/WHOI/Data/output_data/"
-
+## ---------------------------
 ## Library
 library(dplyr)
 library(readxl)
-
-## Get script name (used for source run)
-filename <- current_filename()
-filename <- sub(".*/", "", filename)
+## ---------------------------
+## Paths
+## ---------------------------
+## Functions
+## ---------------------------
 
 ## Data input
 list_dive_files <-
@@ -80,19 +78,14 @@ data$START_LAT = as.numeric(gsub(",", ".", data$START_LAT))
 data$START_LON = as.numeric(gsub(",", ".", data$START_LON))
 
 ## Save compiled dive data
-file_output =  paste0(path_output, "compiled_non_filtered_dives")
+file_output =  "~/Desktop/WHOI/Data/behavioural_data/compiled_non_filtered_dives"
 saveRDS(data, file_output)
-#write.csv(data, file = file_output, row.names = T)
-if (length(nchar(filename)) != 0) {
-  print(paste0(filename, " | ", "Dive data saved : ", file_output))
-}
-
 
 #==================================================================
 # 2) REMOVE DUPLICATED DIVES BY SEAL 
 #==================================================================
 
-seals = read.csv(paste0(path_output, "seals.csv"))
+seals = read.csv("~/Desktop/WHOI/Data/seals.csv")
 
 data_seals_unique <- NULL
 for (seal in seals$REF) {
@@ -109,18 +102,14 @@ summary_rm_dupli <- data_seals_unique %>%
   as.data.frame()
 
 ## Save compiled dive data
-file_output =  paste0(path_output, "compiled_rm_dupli_dives")
+file_output =  "~/Desktop/WHOI/Data/behavioural_data/compiled_rm_dupli_dives"
 saveRDS(data_seals_unique, file_output)
-#write.csv(data, file = file_output, row.names = T)
-if (length(nchar(filename)) != 0) {
-  print(paste0(filename, " | ", "Dive data (duplicates removed) saved : ", file_output))
-}
 
 #==================================================================
 # 2) UPDATE SEALS TABLE 
 #==================================================================
 
-seals = read.csv(paste0(path_output, "seals.csv"))
+seals = read.csv("~/Desktop/WHOI/Data/seals.csv")
 
 no_dive_seals = setdiff(seals$REF, unique(data$REF)) # "ct164-309-BAT2-15" "ct164-185-BAT-20" "ct164-484-21" "ct7_10035_05"
 
@@ -142,10 +131,8 @@ for (seal in seals$REF) {
   }
 }
 
-write.table(seals, paste0(path_output, "seals.csv"), sep = ",", row.names = F, col.names = T)
-if (length(nchar(filename)) != 0) {
-  print(paste0(filename, " | ", "Seals table updated"))
-}
+write.table(seals, "~/Desktop/WHOI/Data/seals.csv", 
+            sep = ",", row.names = F, col.names = T)
 
 ## End script
 rm(list=ls())
