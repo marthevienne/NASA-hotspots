@@ -23,14 +23,21 @@
 ## ---------------------------
 rm(list=ls())
 ## ---------------------------
+## Working directory
+setwd("~/Desktop/WHOI/Data/")
+## ---------------------------
 ## Library
 library(dplyr)
 ## ---------------------------
-
+## Paths
+## ---------------------------
+## Functions
 source("~/Desktop/WHOI/Codes/useful_functions/assign_polygon_to_points.R")
+## ---------------------------
+
 
 ## Import dive data
-dives <- readRDS("~/Desktop/WHOI/Data/output_data/dive_metrics_V6")
+dives <- readRDS("behavioural_data/dive_metrics_bottime_speed_interp_hunttime_bathy_zone_mode_6")
 
 ## Import polynya polygons
 poly <- read.csv("~/Desktop/WHOI/Data/polynyas_contours/OBS/all_contours_per_month/OBS_multiple_polynyas_contours_df.csv")
@@ -94,7 +101,7 @@ dives_id$pol[is.na(dives_id$pol)] = 0
 new_dives <- dives %>% left_join(dives_id, by = c("REF", "NUM"))
 
 ## Save dives table
-saveRDS(new_dives, "~/Desktop/WHOI/Data/output_data/dive_metrics_V7")
+saveRDS(new_dives, "behavioural_data/dive_metrics_bottime_speed_interp_hunttime_bathy_zone_mode_pol_7")
 
 ## End script
 rm(list=ls())
