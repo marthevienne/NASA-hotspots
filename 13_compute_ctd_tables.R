@@ -43,7 +43,7 @@ source("~/Desktop/NASA-hotspots/useful_functions/list_to_array.R")
 #==================================================================
 
 ## Retrieve seals REF in dive data
-seals <- read.csv("~/Desktop/WHOI/Data/output_data/seals.csv") %>%
+seals <- read.csv("~/Desktop/WHOI/Data/seals.csv") %>%
   filter(n_dives_visit_polynya > 0)
 
 seals$REF <- gsub("_", "-", seals$REF)
@@ -120,9 +120,6 @@ files <- df_files %>% #___remove individuals with no ctd file
   pull(ctd_file)
 
 i = 1
-
-## Example netcdf dump
-nc_open(files[1])
 
 for (file in files) {
   
@@ -258,8 +255,8 @@ profiles_table %>%
   filter(!id_ctd %in% stations_table$id_ctd) %>%
   pull(id_ctd)
 
-saveRDS(stations_table, "~/Desktop/WHOI/Data/output_data/ctd_stations_table")
-saveRDS(profiles_table, "~/Desktop/WHOI/Data/output_data/ctd_profiles_table")
+saveRDS(stations_table, "~/Desktop/WHOI/Data/ctd_data/ctd_stations_table")
+saveRDS(profiles_table, "~/Desktop/WHOI/Data/ctd_data/ctd_profiles_table")
 
 ## End script
 rm(list=ls())
