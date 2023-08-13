@@ -20,7 +20,7 @@
 rm(list=ls())
 ## ---------------------------
 ## Working directory
-setwd("~/Desktop/WHOI/Data/output_data/")
+setwd("~/Desktop/WHOI/Data/behavioural_data/")
 ## ---------------------------
 ## Library
 library(raster)
@@ -31,7 +31,7 @@ bathy <- raster("~/Desktop/WHOI/Data/bathy_data/RES_0.0041_BATHY_gebco_2023_sub_
 bathy #___check extent
 
 ## Import dive data
-dives <- readRDS("dive_metrics_V3")
+dives <- readRDS("dive_metrics_bottime_speed_interp_hunttime_3")
 
 dives$bathy = NA
 latlon = cbind(dives$interpLon, dives$interpLat)
@@ -42,7 +42,7 @@ summary(dives$bathy) #___check number of NA
 length(which(is.na(dives$bathy) | dives$bathy == 0))/nrow(dives)*100 #___fraction of dives on land
 
 ## Save dive metrics with bathymetry
-saveRDS(dives, "dive_metrics_V4")
+saveRDS(dives, "dive_metrics_bottime_speed_interp_hunttime_bathy_4")
 
 ## End script
 rm(list=ls())

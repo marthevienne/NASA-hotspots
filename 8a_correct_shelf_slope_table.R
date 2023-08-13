@@ -1,6 +1,4 @@
 ##
-## Script name: 
-##
 ## Purpose of script:
 ##
 ## Author: Marthe Vienne
@@ -25,9 +23,12 @@ setwd("~/Desktop/WHOI/Data/bathy_data/")
 ## Library
 library(raster)
 ## ---------------------------
-
+## Paths
+## ---------------------------
+## Functions
 source("~/Desktop/WHOI/Codes/zonal_transect_bathy.R")
 source("~/Desktop/WHOI/Codes/find_lat_end_slope.R")
+## ---------------------------
 
 table <- read.csv("shelf_slope_158.txt", sep = ",") #___value 1 <- end of shelf & value 2 <- end of slope
 table$lon <- seq(-1, 157.5, 0.5)

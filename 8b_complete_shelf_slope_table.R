@@ -26,10 +26,13 @@ setwd("~/Desktop/WHOI/Data/bathy_data/")
 library(raster)
 library(plotly)
 ## ---------------------------
-
+## Paths
+## ---------------------------
+## Functions
 source("~/Desktop/WHOI/Codes/useful_functions/zonal_transect_bathy.R")
 source("~/Desktop/WHOI/Codes/useful_functions/find_lat_end_slope.R")
 source("~/Desktop/WHOI/Codes/useful_functions/add_row_to_df.R")
+## ---------------------------
 
 ## Bathymetry data
 bathy <- raster("RES_0.0041_BATHY_gebco_2023_sub_ice_n-60.0_s-74.0_w-6.0_e170.0.grd")

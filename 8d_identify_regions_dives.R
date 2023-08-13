@@ -20,7 +20,7 @@
 rm(list=ls())
 ## ---------------------------
 ## Working directory
-setwd("~/Desktop/WHOI/Data/output_data/")
+setwd("~/Desktop/WHOI/Data/behavioural_data/")
 ## ---------------------------
 ## Library
 library(sp)
@@ -29,11 +29,12 @@ library(ggplot2)
 library(dplyr)
 library(terra)
 ## ---------------------------
-
+## Functions
 source("~/Desktop/WHOI/Codes/useful_functions/assign_polygon_to_points.R")
+## ---------------------------
 
 ## Dive data
-dives <- readRDS("dive_metrics_V4")
+dives <- readRDS("dive_metrics_bottime_speed_interp_hunttime_bathy_4")
 str(dives)
 
 ## Bathymetric features polygons
@@ -54,14 +55,14 @@ dives_region <- dives %>% left_join(df_pts_region, by = c('REF', 'NUM'), suffix 
 head(dives_region)
 
 ## Save dives with oceanographic region
-saveRDS(dives_region, "dive_metrics_V5")
+saveRDS(dives_region, "dive_metrics_bottime_speed_interp_hunttime_bathy_zone_5")
 
 #==================================================================
 # CHECK ZONES ON MAP 
 #==================================================================
 rm(list=ls())
 
-dives <- readRDS("dive_metrics_V5")
+dives <- readRDS("dive_metrics_bottime_speed_interp_hunttime_bathy_zone_5")
 
 source("~/Desktop/WHOI/Codes/palettes/pal_bathy.R") #___palette bathy
 

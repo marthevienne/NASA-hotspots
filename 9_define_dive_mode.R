@@ -20,7 +20,7 @@
 rm(list=ls())
 ## ---------------------------
 ## Working directory
-setwd("~/Desktop/WHOI/Data/output_data/")
+setwd("~/Desktop/WHOI/Data/behavioural_data/")
 ## ---------------------------
 ## Library
 library(htmlwidgets)
@@ -28,11 +28,12 @@ library(dplyr)
 library(plotly)
 library(raster)
 ## ---------------------------
-
+## Functions
 source("~/Desktop/WHOI/Codes/functions_raster/raster_to_df.R")
+## ---------------------------
 
 ## Dive data
-dives <- readRDS("dive_metrics_V5")
+dives <- readRDS("dive_metrics_bottime_speed_interp_hunttime_bathy_zone_5")
 colnames(dives)
 
 dives <- dives %>%
@@ -99,7 +100,7 @@ dives %>%
   mutate(freq = n / sum(n) * 100) #___68% P / 32% benthic / 0.5% NA
 
 ## Save dives table
-saveRDS(dives, "dive_metrics_V6")
+saveRDS(dives, "dive_metrics_bottime_speed_interp_hunttime_bathy_zone_mode_6")
 
 ## Histograms max depth and distance to seafloor
 {
