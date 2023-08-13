@@ -5,7 +5,8 @@ assign_ctd <- function(ctd_data, dive_data, radius) {
     ctd_lon <- ctd$interpLon
     ctd_lat <- ctd$interpLat
     ctd_time <- ctd$time
-    ctd_station <- ctd$station
+    # ctd_station <- ctd$station
+    ctd_id <- ctd$id_ctd
     ctd_depth <- ctd$max_depth
     tab <- points_in_circle(
       dive_data, 
@@ -15,10 +16,10 @@ assign_ctd <- function(ctd_data, dive_data, radius) {
       lat = interpLat,
       radius = radius
     ) %>%
-      mutate(dist_t = abs(difftime(DE_DATE, ctd_time, "hours")),
-             station = ctd_station,
+      mutate(dist_t = abs(difftime(DE_DATE, ctd_time, "mins")),
+             id_ctd = ctd_id,
              max_depth_ctd = ctd_depth) %>%
-      select(c(REF, NUM, station, distance_m, dist_t, max_depth_ctd, MAX_DEP)) %>%
+      dplyr::select(c(REF, NUM, distance_m, dist_t, max_depth_ctd, MAX_DEP, id_ctd)) %>%
       arrange(dist_t)
     res <- rbind(res, tab)
   }
