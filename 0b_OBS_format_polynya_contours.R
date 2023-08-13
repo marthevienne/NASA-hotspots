@@ -29,6 +29,7 @@ setwd("~/Desktop/WHOI/Data/polynyas_contours/OBS/")
 library(dplyr)
 library(ggplot2)
 library(lubridate)
+library(sf)
 ## ---------------------------
 rm(list=ls())
 
@@ -154,6 +155,69 @@ for (id in pol_ids) {
 
 ## Write csv
 write.csv(pol_df_final, "OBS_union_polynyas_contours_df.csv", row.names = F)
+
+#==================================================================
+# 4) Compile the polygon union on all years per polynya 
+#==================================================================
+rm(list=ls())
+
+## Working directory
+setwd("~/Desktop/WHOI/Data/polynyas_contours/OBS/all_contours_per_month/")
+
+polynyas = read.csv("~/Desktop/WHOI/Data/polynyas_contours/OBS/all_contours_per_month/OBS_multiple_polynyas_contours_df.csv") %>%
+  filter(month %in% month.name[1:8])
+
+pol_ids = unique(polynyas$ID)
+
+pol_df_final = as.data.frame(matrix(NA, nrow = 0, ncol = 4))
+colnames(pol_df_final) = c("lon", "lat", "ID", "num")
+for (id in pol_ids) {
+    pol_sub = subset(polynyas, ID == id)
+    pol_sub$new_ID = paste0(pol_sub$month, ".", pol_sub$ID, ".", pol_sub$num)
+    keep_num_pol = pol_sub %>% count(new_ID) %>%
+      filter(n > 3)
+    keep_pol = subset(pol_sub, new_ID %in% keep_num_pol$new_ID)
+    pol_sf <-  sfheaders::sf_polygon(
+      obj = keep_pol
+      , x = "lon"
+      , y = "lat"
+      , polygon_id = "new_ID"
+    )
+    
+    union <- st_union(pol_sf) %>% 
+      st_set_crs("+proj=longlat +datum=WGS84 +ellps=WGS84 +towgs84=0,0,0")
+    
+    n_cont = length(union[[1]])
+    num = 1
+    for (cont in 1:n_cont) {
+      coords = union[[1]][[cont]]
+      if (is.array(coords)) {
+        pol_df_inter = as.data.frame(coords)
+        colnames(pol_df_inter) = c("lon", "lat")
+        pol_df_inter$ID = id
+        pol_df_inter$num = num
+        pol_df_final = rbind(pol_df_final, pol_df_inter)
+        num = num + 1
+      } else {
+        for (cont2 in 1:length(coords)) {
+          coords = union[[1]][[cont]][[cont2]]
+          pol_df_inter = as.data.frame(coords)
+          colnames(pol_df_inter) = c("lon", "lat")
+          pol_df_inter$ID = id
+          pol_df_inter$num = num
+          pol_df_final = rbind(pol_df_final, pol_df_inter)
+          num = num + 1
+        }
+      }
+    }
+}
+
+## Write csv
+write.csv(pol_df_final, "OBS_union_all_months_polynyas_contours_df.csv", row.names = F)
+
+ggplot()+
+  geom_polygon(data = pol_df_final, aes(x = lon, y = lat, group = interaction(ID, num), col = ID), fill = "NA") +
+  theme(legend.position = "none")
 
 
 ## TEST BIGGEST CONTOUR
