@@ -1,0 +1,112 @@
+file_name <- "~/Dropbox/data/CESM_outputs/JRA 4p2z run/CESM-JRA-002branch-2004-2021.monthly.mesozooC.nc"
+lon_name = "TLONG"
+lat_name = "TLAT"
+var_name = "mesozooC"
+n_depths = 15
+tolerance = 5.36362e-05
+
+toto <- netcdf_to_raster(file_name,
+                         lon_name,
+                         lat_name,
+                         depth_name,
+                         var_name,
+                         n_years,
+                         n_depths,
+                         n_months,
+                         tolerance)
+
+netcdf_to_raster <- function(file_name,
+                             lon_name,
+                             lat_name,
+                             depth_name,
+                             var_name,
+                             n_years,
+                             n_depths,
+                             n_months,
+                             tolerance) {
+  
+  ncin <- ncdf4::nc_open(file_name)
+  
+  z <- ncdf4::ncvar_get(ncin, var_name, verbose = FALSE)
+  
+  lon <- ncvar_get(ncin, varid = lon_name)
+  # This conversion of lon ensures MAPPED sites and rasters overlap
+  lat <- ncvar_get(ncin, varid = lat_name)
+  
+  n_dim_coord = length(dim(lon))
+  if (n_dim_coord != 1) {
+    lon = lon[,1]
+    lat = lat[1,]
+  }
+  
+  lon <- sapply(lon, function(x) ifelse(x > 180, (x - 360), x))
+  
+  rownames(z) = lon
+  colnames(z) = lat
+  
+  if (length(dim(z)) == 2) {
+    z_df = melt(z)
+  } else {
+    z_df = melt(z[,,1,1])
+  }
+  z_df$value <- as.factor(z_df$value)
+  levels(z_df$value)
+  z_df$value <- NULL
+  colnames(z_df) = c("lon", "lat")
+  
+  grid_coord <- z_df
+  idx <- which(!is.na(grid_coord[,1]) &
+                 !is.na(grid_coord[,2]))
+  grid_coord <- grid_coord[idx,]
+  
+  #Progress bar
+  n_iter = n_years * n_months
+  
+  # Initializes the progress bar
+  pb <- txtProgressBar(min = 0,      # Minimum value of the progress bar
+                       max = n_iter, # Maximum value of the progress bar
+                       style = 3,    # Progress bar style (also available style = 1 and style = 2)
+                       width = 50,   # Progress bar width. Defaults to getOption("width")
+                       char = "=")
+  
+  
+  if (n_years == 1 & n_months == 1 & n_depths == 1) {
+    
+    pixels <- SpatialPixelsDataFrame(points = grid_coord,
+                                     data = data.frame(z = c(z)[idx]),
+                                     tolerance = tolerance)
+    
+    r <- raster(pixels[,'z'])
+    
+  } else {
+    
+    r <- list()
+    a <- 1
+    
+    setTxtProgressBar(pb, 0)
+    
+    for (h in 1:(n_years*n_months)) {
+      
+      for (d in 1:n_depths) {
+      
+        pixels <- SpatialPixelsDataFrame(points = grid_coord,
+                                         data = data.frame(z = c(z[,,d,h])[idx]),
+                                         tolerance = tolerance)
+        
+        r[[a]] <- raster(pixels[,'z'])
+        a <- a + 1
+        
+        Sys.sleep(0.1) # Remove this line and add your code
+        
+        # Sets the progress bar to the current state
+        setTxtProgressBar(pb, h)
+      }
+      
+    }
+    r <- do.call(brick, r)
+    
+    close(pb) # Close the connection
+  }
+  
+  return(r)
+}
