@@ -26,10 +26,11 @@ rm(list=ls())
 library(dplyr)
 library(raster)
 library(lubridate)
+library(terra)
 ## ---------------------------
 
 ## Import dives data
-dives <- readRDS("~/Desktop/WHOI/Data/output_data/dive_metrics_V8")
+dives <- readRDS("~/Desktop/WHOI/Data/behavioural_data/dive_metrics_bottime_speed_interp_hunttime_bathy_zone_mode_pol_inpol_8")
 
 dives <- dives %>%
   dplyr::select(c(REF, lon = interpLon, lat = interpLat, time = DE_DATE, dive_duration = DIVE_DUR)) %>%
@@ -44,11 +45,11 @@ filename = "~/Desktop/WHOI/Data/polynyas_contours/NCAR/JRA_4p2z_run/g.e22.GOMIPE
 r <- raster(filename)
 grid <- raster(extent(r))
 e <- extent(-6, 160, -72, -59) #___box containing all the dives
-res(grid) <- res(r) #° CESML_LR
-# res(grid) <-  0.2 #°
+# res(grid) <- res(r) #° CESML_LR
+res(grid) <-  0.2 #°
 grid <- crop(grid, e)
 
-res_filename = "CESM_LR" 
+res_filename = 0.2 #"CESM_LR"
 projection(grid) <- "+proj=longlat +ellps=WGS84 +datum=WGS84 +no_defs +towgs84=0,0,0"
 
 ## Continents
@@ -145,7 +146,7 @@ r_rel <- rasterize(tsp, grid, "tot_rel_time_spent")
 r <- do.call(brick, c(r_sum, r_mean, r_rel))
 names(r) <- c("SUM", "MEAN", "REL")
 
-file_output = sprintf("~/Desktop/WHOI/Data/output_data/RES_%s_residence_time_period.tif", res_filename)
+file_output = sprintf("output_data/residence_time/tif/RES_%s_residence_time_period.tif", res_filename)
 r2 <- rast(r)
 terra::writeRaster(r2, file_output, overwrite = T)
 
@@ -188,7 +189,7 @@ for (m in months) {
 r <- do.call(brick, c(r_sum, r_mean, r_rel))
 names(r) <- paste0(rep(c("SUM.", "MEAN.", "REL."), each = length(months)), rep(month.name, 3))
 
-file_output = sprintf("~/Desktop/WHOI/Data/output_data/RES_%s_residence_time_month.tif", res_filename)
+file_output = sprintf("output_data/residence_time/tif/RES_%s_residence_time_month.tif", res_filename)
 r2 <- rast(r)
 terra::writeRaster(r2, file_output, overwrite = T)
 
@@ -234,7 +235,7 @@ for (m in seasons) {
 r <- do.call(brick, c(r_sum, r_mean, r_rel))
 names(r) <- paste0(rep(c("SUM", "MEAN", "REL"), each = length(seasons)), rep(c(".Summer", ".Autumn", ".Winter", ".Spring"), 3))
 
-file_output = sprintf("~/Desktop/WHOI/Data/output_data/RES_%s_residence_time_season.tif", res_filename)
+file_output = sprintf("output_data/residence_time/tif/RES_%s_residence_time_season.tif", res_filename)
 r2 <- rast(r)
 terra::writeRaster(r2, file_output, overwrite = T)
 
@@ -273,7 +274,7 @@ for (m in seasons) {
 r <- do.call(brick, r_new)
 names(r) <- c("Summer", "Autumn", "Winter", "Spring")
 
-file_output = sprintf("~/Desktop/WHOI/Data/output_data/RES_%s_nseals_sum_pixel_season.tif", res_filename)
+file_output = sprintf("output_data/nseals/tif/RES_%s_nseals_sum_pixel_season.tif", res_filename)
 r2 <- rast(r)
 terra::writeRaster(r2, file_output, overwrite = T)
 
@@ -308,7 +309,7 @@ for (m in months) {
 r <- do.call(brick, r_new)
 names(r) <- month.name
 
-file_output = sprintf("~/Desktop/WHOI/Data/output_data/RES_%s_nseals_sum_pixel_months.tif", res_filename)
+file_output = sprintf("output_data/nseals/tif/RES_%s_nseals_sum_pixel_months.tif", res_filename)
 r2 <- rast(r)
 terra::writeRaster(r2, file_output, overwrite = T)
 
@@ -346,7 +347,7 @@ for (m in months) {
 r <- do.call(brick, r_new)
 names(r) <- month.name[months]
 
-file_output = sprintf("~/Desktop/WHOI/Data/output_data/RES_%s_nseals_sum_pixel_months_2012.tif", res_filename)
+file_output = sprintf("output_data/nseals/tif/RES_%s_nseals_sum_pixel_months_2012.tif", res_filename)
 r2 <- rast(r)
 terra::writeRaster(r2, file_output, overwrite = T)
 
