@@ -34,10 +34,10 @@ library(terra)
 ## ---------------------------
 
 # SpatRaster
-r <- rast("~/Desktop/WHOI/Data/output_data/RES_CESM_LR_nseals_sum_pixel_season.tif")
-ncfname <- "~/Desktop/WHOI/Data/output_data/residence_time/RES_CESM_LR_nseals_sum_pixel_season.nc"
+r <- rast("~/Desktop/WHOI/Data/output_data/RES_0.2_nseals_sum_pixel_season.tif")
+ncfname <- "~/Desktop/WHOI/Data/output_data/residence_time/RES_0.2_nseals_sum_pixel_season.nc"
 names(r)
-# r <- subset(r, grep('SUM', names(r), value = T)) #___only total time spent per pixel (== SUM)
+#r <- subset(r, grep('SUM', names(r), value = T)) #___only total time spent per pixel (== SUM)
 names(r)
 
 r[is.na(r)] = -999 #___fill value netcdf
@@ -64,7 +64,7 @@ nlat <- length(lat)
 londim <- ncdim_def( "lon", "degrees_east", lon)
 latdim <- ncdim_def( "lat", "degrees_north", lat)
 tdim <- ncdim_def( "seasons", "", 1:4, longname =  "summer, autumn, winter, spring")
-# tdim <- ncdim_def( "months", "", 1:12, longname =  "JFMAMJJASOND")
+#tdim <- ncdim_def( "months", "", 1:12, longname =  "JFMAMJJASOND")
 
 # define variables
 fillvalue <- -999
