@@ -57,7 +57,17 @@ ggplot() +
 ggsave("GEBCO_09_Jun_2023_c176bcb0db4a/bathy_EA.png", height = 42, width = 40, units = c("cm"), dpi = 600)
 
 #==================================================================
-# 2) REPROJECT BATHYMETRY AND CONTINENTS
+# 2) GET TOPOGRAPHY FROM GEBCO TOPOGRAPHY
+#==================================================================
+
+## Topographic data: GEBCO 2023 East Antarctica
+r <- rast("GEBCO_09_Jun_2023_9a2f39a1f6e0/gebco_2023_n-58.0_s-74.0_w-6.0_e170.0.tif")
+r[r < 0] <- NA
+r #___check extent and resolution
+writeRaster(r, "RES_0.0041_TOPO_gebco_2023_n-58.0_s-74.0_w-6.0_e170.0.grd", overwrite = T)
+
+#==================================================================
+# 3) REPROJECT BATHYMETRY AND CONTINENTS
 #==================================================================
 
 r <- rast("RES_0.0041_BATHY_gebco_2023_sub_ice_n-60.0_s-74.0_w-6.0_e170.0.grd")
