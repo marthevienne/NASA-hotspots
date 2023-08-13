@@ -20,22 +20,8 @@
 ## ---------------------------
 rm(list=ls())
 
-## Path input data
-path_input = "~/Desktop/WHOI/Data/output_data/"
-
-## Path output data
-path_output = "~/Desktop/WHOI/Data/output_data/"
-
-## Library
-library(scriptName)
-
-## Get script name (used for source run)
-filename <- current_filename()
-filename <- sub(".*/", "", filename)
-
 ## Data input
-data <- readRDS(paste0(path_input, "compiled_diag_rm_dupli_non_filtered_tracks"))
-#file.info("compiled_diag_rm_dupli_non_filtered_tracks")$mtime
+data <- readRDS("~/Desktop/WHOI/Data/behavioural_data/compiled_diag_rm_dupli_non_filtered_tracks")
 
 ## Remove LQ-9 locations
 data <- data[data$LQ != -9, ]
@@ -60,12 +46,8 @@ diag_tab$lat <- data$LAT
 diag_tab <- diag_tab[!is.na(diag_tab$lc),]
 
 ## Save as R object and CSV
-file_output_diag = paste0(path_output, "tracks_for_bssm")
+file_output_diag = "~/Desktop/WHOI/Data/bssm/tracks_for_bssm"
 saveRDS(diag_tab, file_output_diag)
-#write.csv(diag_tab, file = "tracks_for_bssm.csv", row.names = F)
-if (length(nchar(filename)) != 0) {
-  print(paste0(filename, " | ", "Tracks table for BSSM saved : ", file_output_diag))
-}
 
 ## End script
 rm(list=ls())
