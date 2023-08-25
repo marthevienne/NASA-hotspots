@@ -4,5 +4,5 @@ palette_WM <- c(
   "ISW" = "#F4BC44",
   'DSW' = "#365C8DFF",
   "mSW" = "#23ADE4",
-  "NA" = "#E5E5E5"
+  "other" = "#E5E5E5"
 )
