@@ -39,22 +39,23 @@ source("~/Desktop/NASA-hotspots/isoneutrals.R")
 
 source("~/Desktop/NASA-hotspots/selected_polynyas_analysis.R")
 
-stations <- readRDS("ctd_data/ctd_stations_table_north_bound_interp")
-
-##### ONLY SHACKELTON FOR COMPARISON TEST WITH PORTELA 2022
+## CTD ids in polynyas between January-August
 id_ctd_pol <- readRDS("behavioural_data/dive_metrics_bottime_speed_interp_hunttime_bathy_zone_mode_pol_inpol_ctd_9") %>%
   filter(pol %in% selection) %>%
-  mutate(month = month.name[month(DE_DATE)]) %>%
-  filter(!month %in% c("September", "October", "November", "December")) %>% #___Jan-August
-  select(c(id_ctd, pol)) %>%
-  unique() %>%
+  mutate(month = month.name[month(DE_DATE)],
+         year = year(DE_DATE)) %>%
+  filter(month %in% month.name[1:8] & year <= 2021) %>% #___Jan-August and year 2022 removed
+  dplyr::select(c(id_ctd, pol)) %>%
+  distinct() %>%
   na.omit() #%>%
 
-stations_pol <- stations %>%
+## CTD stations
+stations_pol <- readRDS("ctd_data/ctd_stations_table_north_bound_interp_MLD") %>%
   filter(id_ctd %in% id_ctd_pol$id_ctd)
 
 ctd_pol <- readRDS("ctd_data/ctd_profiles_table") %>%
-  filter(id_ctd %in% stations_pol$id_ctd) #___keep only ctd stations assigned to dives in polynya
+  select(c(id_ctd, depth, psal, temp)) %>%
+  filter(id_ctd %in% stations_pol$id_ctd)
 
 ## Add polynya id
 ctd_pol <- ctd_pol %>%
@@ -69,9 +70,7 @@ ctd_pol_time <- ctd_pol %>%
   mutate(year = year(time),
          month = month.name[month(time)])
 
-#==================================================================
-# 1) ALL CTD STATIONS
-#==================================================================
+rm(ctd_pol)
 #------------------------------------------------------------------
 # a- Compute surface freezing point temperature, pressure and potential temperature
 #------------------------------------------------------------------
@@ -80,6 +79,8 @@ ctd_pol_time <- ctd_pol_time %>%
          pressure = swPressure(depth, interpLat, eos = getOption("oceEOS", default = "gsw")), #___pressure in dbar
          potTemp = swTheta(psal, temp, pressure, interpLon, interpLat,
                            referencePressure = 0, eos = getOption("oceEOS", default = "gsw"))) #___potential temperature in °C
+
+saveRDS(ctd_pol_time, "ctd_data/ctd_profiles_table_Tf_P_theta")
 
 #------------------------------------------------------------------
 # b- TS diagram
@@ -98,6 +99,8 @@ for (id_pol in selection) {
   sft = tibble(SP = psal, t = swTFreeze(psal, 0))
   
   data$month <- factor(data$month, levels = month.name)
+  data <- data %>%
+    arrange_at("month")
   
   ## TS plot with time
   TS_tplot <- ggplot() +
@@ -105,75 +108,58 @@ for (id_pol in selection) {
     geom_line(data = iso28, aes(x = SP, y = t), lty = 2, col = "black") +
     geom_line(data = iso28.27, aes(x = SP, y = t), lty = 2, col = "black") +
     geom_line(data = sft, aes(x = SP, y = t), lty = 2, col = "black") +
-    #scale_y_continuous(limits = c(-2.5, 1)) +
-    #scale_x_continuous(limits = c(32.5, 35)) +
-    scale_color_viridis_d("Month", option = "G") +
-    facet_wrap(~year, ncol = 1, scales = "free") +
+    scale_color_viridis_d("Month", option = "G", ) +
+    #facet_wrap(~year, ncol = 1, scales = "free") +
     theme_bw() +
     guides(colour = guide_legend(override.aes = list(size = 5)))
   
-  png(sprintf("~/Dropbox/data/outputs_Marthe_2023/diagram_TS/png/pol_%s_time_TS.png", id_pol),
-      height = 60, width = 15, units = "cm", res = 300)
+  png(sprintf("~/Dropbox/data/outputs_Marthe_2023/diagram_TS/png/month/pol_%s_time_TS.png", id_pol),
+      height = 15, width = 17, units = "cm", res = 300)
   print(TS_tplot)
   dev.off()
 }
 
-## Track
-track_tplot <- ggplot() +
-  geom_point(data = ctd_pol_time, aes(x = interpLon, y = interpLat, col = month), size = 1) +
-  geom_path(data = ctd_pol_time, aes(x = interpLon, y = interpLat, col = month, group = REF), linewidth = .3) +
-  facet_wrap(~year, ncol = 1, scales = "free") +
-  scale_color_viridis_d("Month", option = "G") +
-  theme_bw() +
-  guides(colour = guide_legend(override.aes = list(size = 5)))
-
-png("~/Dropbox/data/outputs_Marthe_2023/diagram_TS/png/shackleton_time_track.png",
-    height = 60, width = 15, units = "cm", res = 300)
-print(track_tplot)
-dev.off()
-
 #--------------------------------------------------------------------------------
-# b- Construct matrix for each variable
+# c- Construct matrix for each variable
 #    => one column = one station
 #--------------------------------------------------------------------------------
-psal_matrix <- ctd_pol_time %>%
+ctd_pol_time <- readRDS("ctd_data/ctd_profiles_table_Tf_P_theta") %>%
+  distinct()
+
+psal <- ctd_pol_time %>%
   select(c(id_ctd, psal, depth)) %>%
-  group_by(id_ctd) %>%
-  spread(id_ctd, psal) %>%
-  ungroup() %>%
+  distinct()
+
+## TODO: build one object with all data for .mat
+ids <- unique(ctd_pol_time$id_ctd)
+psal_matrix <- psal %>%
+  pivot_wider(names_from = id_ctd, values_from = psal) %>%
   select(!depth)
 
 psal_matrix[is.na(psal_matrix)] = -999
 colnames(psal_matrix) = paste0("Station_", colnames(psal_matrix))
 
-thetat_matrix <- ctd_pol_time %>%
+t_matrix <- ctd_pol_time %>%
   select(c(id_ctd, temp, depth)) %>%
-  group_by(id_ctd) %>%
-  spread(id_ctd, temp) %>%
-  ungroup() %>%
+  distinct() %>%
+  pivot_wider(names_from = id_ctd, values_from = temp) %>%
   select(!depth)
 
-thetat_matrix[is.na(thetat_matrix)] = -999
-colnames(thetat_matrix) = paste0("Station_", colnames(thetat_matrix))
+t_matrix[is.na(t_matrix)] = -999
+colnames(t_matrix) = paste0("Station_", colnames(t_matrix))
 
 pressure_matrix <- ctd_pol_time %>%
   select(c(id_ctd, pressure, depth)) %>%
-  group_by(id_ctd) %>%
-  spread(id_ctd, pressure) %>%
-  ungroup() %>%
+  distinct() %>%
+  pivot_wider(names_from = id_ctd, values_from = pressure) %>%
   select(!depth)
 
 pressure_matrix[is.na(pressure_matrix)] = -999
 colnames(pressure_matrix) = paste0("Station_", colnames(pressure_matrix))
 
-# lon <- ctd_sample %>%
-#   select(id_ctd) %>%
-#   distinct() %>%
-#   left_join(stations, by = "id_ctd")
-
 lonLat <- stations_pol %>%
   select(c(id_ctd, interpLon, interpLat)) %>%
-  filter(id_ctd %in% ctd_pol$id_ctd)
+  filter(id_ctd %in% ctd_pol_time$id_ctd)
 
 lat <- lonLat %>%
   pull(interpLat)
@@ -183,23 +169,26 @@ lon <- lonLat %>%
 
 id_matrix <- ctd_pol_time %>%
   select(c(id_ctd, psal, depth)) %>%
-  group_by(id_ctd) %>%
-  spread(id_ctd, psal) %>%
-  select(!depth)
+  distinct() %>%
+  pivot_wider(names_from = id_ctd, values_from = psal) %>%
+  select(c(!depth))
+
 
 ## Write CSV for each matrix
 write.csv(psal_matrix, "ctd_data/gamma_n_data/psalinity.csv", row.names = F)
-write.csv(thetat_matrix, "ctd_data/gamma_n_data/pot_temp.csv", row.names = F)
+write.csv(t_matrix, "ctd_data/gamma_n_data/temp.csv", row.names = F)
 write.csv(pressure_matrix, "ctd_data/gamma_n_data/pressure.csv", row.names = F)
 write.csv(lat, "ctd_data/gamma_n_data/lat.csv", row.names = F)
 write.csv(lon, "ctd_data/gamma_n_data/lon.csv", row.names = F)
 
 #-------------------------------------------------------------------------------------------
-# c- GO TO MATLAB => compute neutral density for each observation at each station (EOS 80)
+# d- GO TO MATLAB => compute neutral density for each observation at each station (EOS 80)
 #-------------------------------------------------------------------------------------------
+library(R.matlab)
+system("matlab -nodisplay -r \"run('~/Desktop/NASA-hotspots/eos80_legacy_gamma_n/run_eos80_gamma_n.m'); exit\"")
 
 #------------------------------------------------------------------
-# d- ATTRIBUTE NEUTRAL DENSITY (gamma) TO CTD DATAFRAME
+# e- ATTRIBUTE NEUTRAL DENSITY (gamma) TO CTD DATAFRAME
 #------------------------------------------------------------------
 nstations <- length(colnames(id_matrix))
 gamma <- read.csv("ctd_data/gamma_n_data/gamma.csv", header = F, sep = ";", check.names = F)
@@ -221,7 +210,7 @@ ctd_pol_time <- ctd_pol_time %>%
   left_join(df_gather, by = c("id_ctd", "depth"))
 
 #------------------------------------------------------------------
-# e- DEFINE WATER MASSES
+# f- DEFINE WATER MASSES
 #------------------------------------------------------------------
 
 ## Criteria: 
@@ -232,22 +221,29 @@ ctd_pol_time <- ctd_pol_time %>%
 # 5 = mSW: Tf + 0.1 < 𝜃 < - 1.7 & 𝛾 > 28.2
 # 6 = LSSW
 
-ctd_gamma <- ctd_pol_time %>%
-  mutate(water_mass = case_when(psal < 34.4 & potTemp > Tf & gamma < 28 ~ 1,
-                                potTemp > Tf + 0.1 & gamma > 28 & gamma < 28.27 ~ 2,
-                                potTemp < Tf - 0.05 ~ 3,
-                                psal > 34.5 & Tf - 0.05 < potTemp & Tf + 0.1 > potTemp & gamma > 28.27 ~ 4,
-                                Tf + 0.1 < potTemp & potTemp < -1.7 & gamma > 28.2 ~ 5,
-                                .default = 6))
+## Criteria: 
+# 1 = AASW: 𝜃 > Tf & 𝛾 < 28
+# 2 = mCDW: 𝜃 > Tf & 28 < 𝛾 < 28.27
+# 3 = ISW: 𝜃 < Tf
+# 4 = DSW: Tf < 𝜃 < Tf + 0.1 & 𝛾 > 28.27
+# 5 = mSW: Tf + 0.1 < 𝜃 < 1.7 & 𝛾 > 28.2
 
 ctd_gamma <- ctd_pol_time %>%
-  mutate(water_mass = case_when(potTemp > Tf - 0.05 & gamma < 28 ~ 1,
-                                potTemp > Tf + 0.1 & gamma > 28 & gamma < 28.27 ~ 2,
-                                potTemp < Tf - 0.05 ~ 3,
-                                Tf - 0.05 < potTemp & Tf + 0.1 > potTemp & gamma > 28.27 ~ 4,
-                                Tf + 0.1 < potTemp & potTemp < 1.7 & gamma > 28.2 ~ 5,
-                                potTemp < Tf + 0.1 & potTemp > Tf - 0.05 & gamma > 28 & gamma < 28.27 ~ 6,
-                                .default = NA))
+  mutate(water_mass = case_when(potTemp > Tf - 0.5 & gamma < 28 ~ "AASW",
+                                potTemp > Tf + 0.1 & between(gamma, 28, 28.27) ~ "mCDW",
+                                potTemp < Tf - 0.05 ~ "ISW",
+                                between(potTemp, Tf - 0.05, Tf + 0.1) & gamma > 28.27 ~ "DSW",
+                                between(potTemp, Tf + 0.1, 1.7) & gamma > 28.2 ~ "mSW",
+                                between(potTemp, Tf - 0.05, Tf + 0.1) & between(gamma, 28, 28.27) ~ "LSSW",
+                                .default = "other"))
+
+ctd_gamma <- ctd_pol_time %>%
+  mutate(water_mass = case_when(potTemp > Tf & gamma < 28 ~ "AASW",
+                                potTemp > Tf & between(gamma, 28, 28.27) ~ "mCDW",
+                                potTemp < Tf ~ "ISW",
+                                between(potTemp, Tf, Tf + 0.1) & gamma > 28.27 ~ "DSW",
+                                between(potTemp, Tf + 0.1, 1.7) & gamma > 28.2 ~ "mSW",
+                                .default = "other"))
 
 stations_pol <- stations_pol %>%
   mutate(month = month(time),
@@ -258,201 +254,6 @@ stations_pol <- stations_pol %>%
 
 saveRDS(stations_pol, "ctd_data/gamma_n_data/ctd_stations_table_polynyas_season")
 saveRDS(ctd_gamma, "ctd_data/gamma_n_data/ctd_profiles_table_WM")
-
-## TS plot with WM
-TS_wmplot <- ggplot() +
-  geom_point(data = ctd_gamma, aes(x = psal, y = potTemp, col = factor(water_mass)), size = .05) +
-  geom_line(data = iso28, aes(x = SP, y = t), lty = 2, col = "black") +
-  geom_line(data = iso28.27, aes(x = SP, y = t), lty = 2, col = "black") +
-  geom_line(data = sft, aes(x = SP, y = t), lty = 2, col = "black") +
-  #scale_y_continuous(limits = c(-2.5, 1)) +
-  #scale_x_continuous(limits = c(32.5, 35)) +
-  scale_color_viridis_d("Month") +
-  facet_wrap(~year, ncol = 1, scales = "free") +
-  theme_bw() +
-  guides(colour = guide_legend(override.aes = list(size = 5)))
-
-png("~/Dropbox/data/outputs_Marthe_2023/diagram_TS/png/shackleton_WM_TS.png",
-    height = 60, width = 15, units = "cm", res = 300)
-print(TS_wmplot)
-dev.off()
-
-
-#------------------------------------------------------------------
-# diagram TS Shackleton
-#------------------------------------------------------------------
-
-# TODO: save table with depth, psal, potential temp, WM
-stations_pol_time <- stations_pol %>%
-  select(c(id_ctd, time))
-
-ctd_gamma_time <- ctd_gamma %>%
-  left_join(stations_pol_time, by = "id_ctd") %>%
-  mutate(year = year(time))
-
-toto <- ctd_gamma_time %>%
-  select(c(psal, potTemp, water_mass, time, year))
-write.csv(toto, "~/Desktop/test.csv")
-
-library(lubridate)
-sal_p <- ggplot() +
-  geom_point(data = ctd_gamma_time, aes(x = time, y = -depth, col = psal), size = .1) +
-  #scale_color_manual(values = palette_WM) +
-  facet_wrap(factor(year)~., scales = "free_x", ncol = 1) +
-  theme_minimal()
-
-png("~/Dropbox/data/outputs_Marthe_2023/diagram_TS/png/shackleton_timeline_salinity.png",
-    height = 30, width = 20, units = "cm", res = 150)
-print(sal_p)
-dev.off()
-
-wm_p <- ggplot() +
-  geom_point(data = ctd_gamma_time, aes(x = time, y = -depth, col = factor(water_mass)), size = .1) +
-  #scale_color_manual(values = palette_WM) +
-  facet_wrap(factor(year)~., scales = "free_x", ncol = 1) +
-  theme_minimal()
-
-png("~/Dropbox/data/outputs_Marthe_2023/diagram_TS/png/shackleton_timeline_wm.png",
-    height = 30, width = 20, units = "cm", res = 150)
-print(wm_p)
-dev.off()
-
-## 2011 (compare with Portela)
-
-
-ctd_gamma_time <- ctd_gamma %>%
-  left_join(stations_pol_time, by = "id_ctd") %>%
-  mutate(year = year(time)) %>%
-  filter(year == 2011)
-
-ctd_ts <- as.ctd(salinity = ctd_gamma_time$psal, 
-                 temperature = ctd_gamma_time$temp,
-                 pressure = ctd_gamma_time$pressure,
-                 longitude = ctd_gamma_time$interpLon,
-                 latitude = ctd_gamma_time$interpLat)
-
-col <- ctd_gamma_time %>%
-  mutate(col = case_when(water_mass == 1 ~ "#ED7A5F",
-                         water_mass == 2 ~ "#80CAAC",
-                         water_mass == 3 ~ "#F4BC44",
-                         water_mass == 4 ~ "#365C8DFF",
-                         water_mass == 5 ~ "#23ADE4",
-                         .default = "#E5E5E5")) %>%
-  pull(col)
-
-ctd_gamma_time <- ctd_gamma_time %>%
-  mutate(sigma = swSigma(psal, temp, pressure, 
-                         longitude = interpLon, latitude = interpLat, 
-                         getOption("oceEOS", default = "gsw")))
-# min_sig <- floor(min(ctd_pol_s$sigma, na.rm = T))
-# max_sig <- floor(max(ctd_pol_s$sigma, na.rm = T))
-# lev_gamma <- seq(min_sig, max_sig, length.out = 5)
-min_psal <- min(ctd_gamma_time$psal, na.rm = T)
-max_psal <- max(ctd_gamma_time$psal, na.rm = T)
-min_theta <- min(ctd_gamma_time$potTemp, na.rm = T)
-max_theta <- max(ctd_gamma_time$potTemp, na.rm = T)
-
-print(plotTS(with(ctd_gamma_time, ctd_ts), eos = "gsw", 
-             pch = 19, cex = .4, col = col, mar = par('mar'), 
-             nlevels = 10,
-             inSitu = T, ylab = "Potential temperature [°C]",
-             Slim = c(min_psal - dS, max_psal + dS),
-             Tlim = c(min_theta - dT, max_theta + dT)))
-print(lines(isopycnals$psal, isopycnals$potTemp))
-print(legend('topleft', legend = names(palette_WM), pch=19, col=palette_WM))
-print()
-print(title(s))
-
-# ctd_winter <- stations_pol %>%
-#   filter(season == "Autumn")
-# 
-# ctd_gamma_winter <- ctd_gamma %>%
-#   filter(id_ctd %in% ctd_winter$id_ctd)
-#   
-# library(plotly)
-# p <- plot_ly(width = 1000, height = 1000) %>% 
-#   add_markers(data = ctd_gamma_winter, x = ~interpLon, y = ~interpLat, z = ~-depth, color = ~factor(water_mass),
-#               marker = list(size = 2))
-# p
-
-#------------------------------------------------------------------
-# f- TS diagram
-#------------------------------------------------------------------
-ctd_gamma <- readRDS("ctd_data/gamma_n_data/ctd_profiles_table_WM")
-stations_pol <- readRDS("ctd_data/gamma_n_data/ctd_stations_table_polynyas_season")
-
-## TODO: add pol id to ctd stations for TS diag
-id_pols <- stations_pol %>%
-  select(pol) %>%
-  unique() %>%
-  arrange(pol) %>%
-  pull(pol)
-seasons <- c("Summer", "Autumn", "Winter", "Spring")
-
-dS = 0.1
-dT = 0.1
-
-for (id_pol in id_pols) {
-  # pdf(sprintf("~/Dropbox/data/outputs_Marthe_2023/diagram_TS/pol_%s_diag_TS.pdf", id_pol),
-  #     height = 3, width = 5, pointsize = 5)
-  
-    stat_pol_unik <- stations_pol #%>%
-      filter(pol == id_pol)
-    
-    ctd_pol <- ctd_gamma #%>%
-      filter(id_ctd %in% stat_pol_unik$id_ctd)
-    
-    min_psal <- min(ctd_pol$psal, na.rm = T)
-    max_psal <- max(ctd_pol$psal, na.rm = T)
-    min_theta <- min(ctd_pol$potTemp, na.rm = T)
-    max_theta <- max(ctd_pol$potTemp, na.rm = T)
-    
-    for (s in seasons) {
-      png(sprintf("~/Dropbox/data/outputs_Marthe_2023/diagram_TS/png/pol_%s_%s_diag_TS.png", id_pol, s),
-          height = 13, width = 20, units = "cm", res = 150)
-      
-      stat_pol_unik_season <- stat_pol_unik %>%
-        filter(season == s)
-      
-      ctd_pol_s <- ctd_pol%>%
-        filter(id_ctd %in% stat_pol_unik_season$id_ctd)
-      
-      if (nrow(ctd_pol_s) > 0) {
-        ctd_ts <- as.ctd(salinity = ctd_pol_s$psal, 
-                         temperature = ctd_pol_s$potTemp,
-                         pressure = ctd_pol_s$pressure,
-                         longitude = ctd_pol_s$interpLon,
-                         latitude = ctd_pol_s$interpLat)
-        
-        col <- ctd_pol_s %>%
-          mutate(col = case_when(water_mass == 1 ~ "#ED7A5F",
-                                 water_mass == 2 ~ "#80CAAC",
-                                 water_mass == 3 ~ "#F4BC44",
-                                 water_mass == 4 ~ "#365C8DFF",
-                                 water_mass == 5 ~ "#23ADE4",
-                                 .default = "#E5E5E5")) %>%
-          pull(col)
-        
-        ctd_pol_s <- ctd_pol_s %>%
-          mutate(sigma = swSigma(psal, potTemp, pressure, 
-                                 longitude = interpLon, latitude = interpLat, 
-                         getOption("oceEOS", default = "gsw")))
-        # min_sig <- floor(min(ctd_pol_s$sigma, na.rm = T))
-        # max_sig <- floor(max(ctd_pol_s$sigma, na.rm = T))
-        # lev_gamma <- seq(min_sig, max_sig, length.out = 5)
-        print(plotTS(with(ctd_pol_s, ctd_ts), eos = "gsw", 
-               pch = 19, cex = .4, col = col, mar = par('mar'), 
-               nlevels = 10,
-               inSitu = T, ylab = "Potential temperature [°C]",
-               Slim = c(min_psal - dS, max_psal + dS),
-               Tlim = c(min_theta - dT, max_theta + dT)))
-        print(legend('topleft', legend = names(palette_WM), pch=19, col=palette_WM))
-        print(title(s))
-      }
-      dev.off()
-    }
-  # dev.off()
-}
 
 ## End script
 rm(list=ls())
