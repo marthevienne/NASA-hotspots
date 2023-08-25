@@ -1,8 +1,8 @@
 ## ---------------------------
 ##
-## Script name: 
+## Script name: define_MLD
 ##
-## Purpose of script:
+## Purpose of script: Compute mixed layer depth following Boyer Montégut et al. (2004) on potential density anomaly gradient
 ##
 ## Author: Marthe Vienne
 ## Modified by:
@@ -26,107 +26,81 @@ setwd("~/Desktop/WHOI/Data/")
 ## Library
 library(oce)
 library(dplyr)
+library(lubridate)
 ## ---------------------------
 ## Paths
 ## ---------------------------
 ## Functions
+source("~/Desktop/NASA-hotspots/useful_functions/compute_mld.R")
 ## ---------------------------
 
-## Dives
-dives <- readRDS("behavioural_data/dive_metrics_bottime_speed_interp_hunttime_bathy_zone_mode_pol_inpol_ctd_9") %>%
-  filter(pol > 0)
+## CTD ids
+id_ctd_dives <- readRDS("behavioural_data/dive_metrics_bottime_speed_interp_hunttime_bathy_zone_mode_pol_inpol_ctd_9") %>%
+  # mutate(month = month(DE_DATE),
+  #        year = year(DE_DATE)) %>%
+  #filter(pol > 0 & month <= 8 & year <= 2021) %>%
+  pull(id_ctd) %>%
+  na.omit() %>%
+  unique()
 
-## CTD stations in polynya
-stations <- readRDS("ctd_data/ctd_stations_table_north_bound_interp")
 
-stations_pol <- stations %>%
-  filter(id_ctd %in% dives$id_ctd)
+## CTD stations
+stations <- readRDS("ctd_data/ctd_stations_table_north_bound_interp") %>%
+  filter(id_ctd %in% id_ctd_dives)
 
-lonLat <- stations_pol %>%
-  select(c(id_ctd, interpLon, interpLat))
+lonLat <- stations %>%
+  dplyr::select(c(id_ctd, interpLon, interpLat))
 
-## CTD profiles
+## CTD profiles in polynyas
 ctd <- readRDS("ctd_data/ctd_profiles_table") %>%
-  filter(id_ctd %in% stations_pol$id_ctd) %>%
+  filter(id_ctd %in% id_ctd_dives) %>%
   left_join(lonLat, by = "id_ctd")
 
-#------------------------------------------------------------------
-# ALL STATIONS
-#------------------------------------------------------------------
+## Dataframe for computing
+df <- ctd %>%
+  dplyr::select(c(id = id_ctd, depth, SP = psal, t = temp, lon = interpLon, lat = interpLat))
 
-## Compute pressure
-ctd <- ctd %>%
-  mutate(pressure = swPressure(depth, interpLat, eos = getOption("oceEOS", default = "gsw")))
+## Calculate MLD
+df_mld <- compute_mld(df, eos = "gsw")
+summary(df_mld$MLD)
+df_mld %>%
+  ungroup() %>%
+  filter(is.na(MLD)) %>%
+  count()
 
-## Calculate dsigma = sigma_prof - sigma_10m
-ctd <- ctd %>%
-  mutate(sigmaTheta = swSigmaTheta(salinity = psal, 
-                                   temperature = temp, 
-                                   pressure = pressure, 
-                                   longitude = interpLon, 
-                                   latitude = interpLat, 
-                         eos = getOption("oceEOS", default = "gsw")))
-
-ggplot() +
-  geom_path(data = ctd[1:2000,], aes(x = sigmaTheta, y = -pressure, group = id_ctd)) +
-  theme_minimal()
-
-ctd_dSigmaT <- ctd %>%
-  group_by(id_ctd) %>%
-  mutate(dSigmaT = sigmaTheta - nth(sigmaTheta, 10)) 
-
-ggplot() +
-  geom_path(data = ctd_dSigmaT[1:2000,], aes(x = dSigmaT, y = -pressure, group = id_ctd)) +
-  theme_minimal() +
-  scale_y_continuous(limits = c(- 50, 0), n.breaks = 10) +
-  geom_vline(xintercept = 0.03)
-
-
-ctd_MLD <- ctd_dSigmaT %>%
-  filter(dSigmaT >= 0.03) %>%
-  group_by(id_ctd) %>%
-  arrange(depth, .by_group = T) %>%
-  filter(row_number() == 1) %>%
-  select(c(id_ctd, MLD = depth, dSigmaT))
-
-summary(ctd_MLD$MLD)
-
+## Add MLD to stations table
 stations_MLD <- stations %>%
-  left_join(ctd_MLD, by = "id_ctd")
+  left_join(df_mld, by = c("id_ctd" = "id"))
 
-ggplot(stations_MLD, aes(x = time, fill = id_ctd, col = id_ctd)) + 
-  geom_bar(aes(y = -MLD), stat = "identity", position = "dodge")
-
-plot(stations_MLD$time, -stations_MLD$MLD, type = "p", pch = 16, cex = .4)
+## Scatter plot of MLD versus day of the year
+ggplot(stations_MLD, aes(x = yday(time), fill = id_ctd, col = REF)) + 
+  geom_point(aes(y = -MLD), size = .2) +
+  theme_bw() +
+  theme(legend.position = "none") +
+  scale_color_viridis_d()
 
 saveRDS(stations_MLD, "ctd_data/ctd_stations_table_north_bound_interp_MLD")
 
-#------------------------------------------------------------------
-# TEST ON 2 STATIONS
-#------------------------------------------------------------------
+## MLD == NA ?
+stations_na <- readRDS("ctd_data/ctd_stations_table_north_bound_interp_MLD") %>%
+  filter(is.na(MLD))
 
-stat_sp <- stations_pol %>%
-  filter(REF == "ft07-Cy29-11" & station == 102 | REF == "ft07-Cy29-11" & station == 56)
+stations_na %>% count()
+summary(stations_na$max_depth)
+hist(stations_na$max_depth, breaks = 30)
 
-ctd_sp <- ctd %>%
-  filter(REF == "ft07-Cy29-11" & station == 102 | REF == "ft07-Cy29-11" & station == 56)
+#----> CTD not deep enough (med = 454.0 m)
 
-## Calculate dsigma = sigma_prof - sigma_10m
-ctd_sp <- ctd_sp %>%
-  mutate(sigma = swSigma(psal, temp, pressure, longitude = interpLon, latitude = interpLat, 
-                         getOption("oceEOS", default = "gsw")))
+## MLD
+stations <- readRDS("ctd_data/ctd_stations_table_north_bound_interp_MLD") %>%
+  filter(!is.na(MLD))
 
-ggplot() +
-  geom_path(data = ctd_sp, aes(x = sigma, y = -pressure, group = id_ctd)) +
-  theme_minimal()
+stations %>% count()
+summary(stations$max_depth)
+hist(stations$max_depth, breaks = 30)
 
-ctd_sp <- ctd_sp %>%
-  group_by(id_ctd) %>%
-  mutate(dsigma = sigma - nth(sigma, 10)) %>%
-  filter(dsigma >= 0.03) %>%
-  group_by(id_ctd) %>%
-  arrange(depth, .by_group = T) %>%
-  filter(row_number() == 1)
+ggplot(stations) +
+  geom_point(aes(x = max_depth, y = MLD))
 
 ## End script
 rm(list=ls())
