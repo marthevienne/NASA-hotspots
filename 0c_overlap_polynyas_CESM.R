@@ -65,14 +65,18 @@ names(r) <- lyr_names
 r
 
 r[r == 0] = NA #___open ocean to NA
-plot(r$January.1958) #___1 = open-ocean polynyas and 2 = coastal polynyas
+r[r == 1] = NA #___open-ocean polynyas to NA
+plot(r$January.1958) #___2 = coastal polynyas
 
-start <- (2004 - years[1]) * 12 + 1
-end <- (2019 - years[1] + 1) * 12
+year_i <- 2004
+year_f <- 2021
+start <- (year_i - years[1]) * 12 + 1
+end <- (year_f - years[1] + 1) * 12
 r_sub <- subset(r, start:end)
 
 r_sub <- rast(r_sub)
-terra::writeRaster(r_sub, "~/Desktop/WHOI/Data/polynyas_contours/NCAR/JRA_4p2z_run/NCAR_monthly_polynya_2004_2019.tiff", overwrite = T)
+filename <- sprintf("~/Desktop/WHOI/Data/polynyas_contours/NCAR/JRA_4p2z_run/NCAR_monthly_polynya_%s_%s.tiff", year_i, year_f)
+terra::writeRaster(r_sub, filename, overwrite = T)
 
 #==================================================================
 # POLYNYAS DEFINED BY OBSERVATION 
@@ -81,7 +85,7 @@ rm(list=ls())
 
 source("~/Desktop/WHOI/Codes/useful_functions/df_to_SpatialPolygonsDataFrame.R")
 
-r <- raster::brick("~/Desktop/WHOI/Data/polynyas_contours/NCAR/JRA_4p2z_run/NCAR_monthly_polynya_2004_2019.tiff")
+r <- raster::brick("~/Desktop/WHOI/Data/polynyas_contours/NCAR/JRA_4p2z_run/NCAR_monthly_polynya_2004_2021.tiff")
 
 df_polynyas <- read.csv("~/Desktop/WHOI/Data/polynyas_contours/OBS/all_contours_per_month/OBS_multiple_polynyas_contours_df.csv")
 
@@ -89,9 +93,13 @@ df_polynyas <- df_polynyas %>%
   mutate(new_id = paste0(ID, "-", num),
          date = paste0(month, ".", year))
 
+## After 2019
+df_polynyas_big <- read.csv("~/Desktop/WHOI/Data/polynyas_contours/OBS/all_contours_per_month/OBS_big_polynyas_contours_df.csv") %>%
+  mutate(new_id = paste0(ID, "-", num),
+         date = paste0(month, ".", year))
+
 id_pols <- unique(df_polynyas$ID)
 dates <- unique(names(r)) #___ordered array
-dates <- dates[dates %in% unique(df_polynyas$date)] #___keep only dates present in df_polynyas
 
 summary <- data.frame(matrix(NA,    # Create empty data frame
                           nrow = length(dates),
@@ -105,8 +113,16 @@ bbox <- extent(c(min(df_polynyas$lon), max(df_polynyas$lon), -70, -60)) #___crop
 for (d in dates) {
   print(i)
   
-  df_polynyas_lyr <- df_polynyas %>%
-    filter(date == d)
+  year = as.numeric(str_extract(d, "[0-9]+"))
+  
+  if (year <= 2019) {
+    df_polynyas_lyr <- df_polynyas %>%
+      filter(date == d)
+  } else {
+    m = str_extract(d, "[A-z]+")
+    df_polynyas_lyr <- df_polynyas_big %>%
+      filter(month == m)
+  }
   
   keep_poly <- df_polynyas_lyr %>%
     group_by(new_id) %>%
@@ -148,7 +164,7 @@ summary <- summary %>%
 
 r_new <- do.call(brick, r_new)
 r_new <- rast(r_new)
-terra::writeRaster(r_new, "~/Desktop/WHOI/Data/polynyas_contours/NCAR/JRA_4p2z_run/NCAR_polynya_cells_crop_polygons_2004_2019.tiff", overwrite = T)
+terra::writeRaster(r_new, "~/Desktop/WHOI/Data/polynyas_contours/NCAR/JRA_4p2z_run/NCAR_polynya_cells_crop_polygons_2004_2021.tiff", overwrite = T)
 
 ## Save summary
 write.csv(summary, "~/Desktop/WHOI/Data/polynyas_contours/NCAR/JRA_4p2z_run/summary_overlap_NCAR_OBS.csv", row.names = F)
