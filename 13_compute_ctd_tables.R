@@ -44,7 +44,7 @@ source("~/Desktop/NASA-hotspots/useful_functions/list_to_array.R")
 
 ## Retrieve seals REF in dive data
 seals <- read.csv("~/Desktop/WHOI/Data/seals.csv") %>%
-  filter(n_dives_visit_polynya > 0)
+  filter(visit_polynya == "yes")
 
 seals$REF <- gsub("_", "-", seals$REF)
 
@@ -112,12 +112,14 @@ files_NA <- df_files %>%
 # GET VARIABLES NETCDF
 #------------------------------------------------------------------
 
-stations_table <- NULL #___(a)
-profiles_table <- NULL #___(b)
-
 files <- df_files %>% #___remove individuals with no ctd file
   filter(!is.na(ctd_file)) %>%
   pull(ctd_file)
+
+#------------------------------------------------------------------
+# (a) CTD STATIONS TABLE: REF, station, date, time, lon, lat, PQC
+#------------------------------------------------------------------
+stations_table <- NULL #___(a)
 
 i = 1
 
@@ -126,7 +128,7 @@ for (file in files) {
   print(i)
   
   ncdf <- nc_open(file) #___NETCDF file
-
+  
   ## Reference
   ref <- ncatt_get(ncdf, varid = 0, attname = "smru_platform_code")
   ref <- ref$value
@@ -135,10 +137,7 @@ for (file in files) {
   ## Number stations and depths
   nprof <- ncdf$dim$N_PROF$len
   ndepth <- ncdf$dim$N_LEVELS$len
-  
-  ## Type
-  # type = ???
-  
+
   ## Time
   dates_j <- ncvar_get(ncdf, varid = "JULD") #___julian date: days since 1950-01-01 00:00:00 UTC
   dates <- as.POSIXct(as.Date(dates_j, origin = as.Date("1950-01-01 00:00:00")), tz = "UTC") #___POSIXct
@@ -151,36 +150,47 @@ for (file in files) {
   PQC <- ncvar_get(ncdf, varid = "POSITION_QC") %>% #___ARGOS QC
     list_to_array()
   
-  #------------------------------------------------------------------
-  # (a) CTD STATIONS TABLE: REF, station, date, time, lon, lat, PQC
-  #------------------------------------------------------------------
-  
   refs <- rep(ref, nprof)
   stations <- seq(1, nprof)
   
   stations_REF <- data_frame(REF = refs, 
-                            station = stations,
-                            time = dates,
-                            lon = lon,
-                            lat = lat,
-                            PQC = PQC)
+                             station = stations,
+                             time = dates,
+                             lon = lon,
+                             lat = lat,
+                             PQC = PQC)
   
   stations_table <- rbind(stations_table, stations_REF)
+
+  i = i + 1
   
-  ## Add max depth when construct CTD PROFILES TABLE (b)
+}
+
+
+#----------------------------------------------------------------------------
+# (b) CTD PROFILES TABLE: REF, station, depth, temp, TQC, terr, sal, SQC, serr
+#----------------------------------------------------------------------------
+profiles_table <- NULL #___(b)
+
+i = 1
+
+for (file in files) {
   
-  #----------------------------------------------------------------------------
-  # (b) CTD PROFILES TABLE: REF, station, depth, temp, TQC, terr, sal, SQC, serr
-  #----------------------------------------------------------------------------
+  print(i)
   
+  ncdf <- nc_open(file) #___NETCDF file
+  
+  ## Reference
+  ref <- ncatt_get(ncdf, varid = 0, attname = "smru_platform_code")
+  ref <- ref$value
+  ref <- gsub("_", "-", ref)
+  
+  ## Number stations and depths
+  nprof <- ncdf$dim$N_PROF$len
+  ndepth <- ncdf$dim$N_LEVELS$len
+
   ## Temperature (°C)
   temp <- ncvar_get(ncdf, varid = "TEMP_ADJUSTED") %>% #___temperature
-    as_tibble() %>%
-    gather() %>%
-    pull(value)
-  tqc <- ncvar_get(ncdf, varid = "TEMP_ADJUSTED_QC") %>% #___temperature quality control
-    list_to_array()
-  terr <- ncvar_get(ncdf, varid = "TEMP_ADJUSTED_ERROR") %>% #___temperature error: SEA TEMPERATURE ERROR IN SITU ITS-90 SCALE
     as_tibble() %>%
     gather() %>%
     pull(value)
@@ -190,59 +200,48 @@ for (file in files) {
     as_tibble() %>%
     gather() %>%
     pull(value)
-  sqc <- ncvar_get(ncdf, varid = "PSAL_ADJUSTED_QC") %>% #___practical salinity quality control
-    list_to_array()
-  serr <- ncvar_get(ncdf, varid = "PSAL_ADJUSTED_ERROR") %>% #___practical salinity error: PRACTICAL SALINITY ERROR
-    as_tibble() %>%
-    gather() %>%
-    pull(value)
 
-  ## Depth 
+  ## Depth
   depth_array <- rep(seq(1:ndepth), nprof)
-  # dqf <- ??????
-
+  
   ## Stations
   station_array <- rep(1:nprof, each = ndepth)
-
+  
   ## Reference
   ref_array <- rep(ref, nprof * ndepth)
-
+  
   profiles_REF <- data_frame(REF = ref_array,
-                   station = station_array,
-                   depth = depth_array,
-                   #DQC =
-                   temp = temp,
-                   TQC = tqc,
-                   terr = terr,
-                   psal = psal,
-                   SQC = sqc,
-                   serr = serr
-                   )
-
+                             station = station_array,
+                             depth = depth_array,
+                             temp = temp,
+                             psal = psal
+  )
+  
   profiles_REF <- profiles_REF %>%
     na.omit()
-
+  
   profiles_table <- rbind(profiles_table, profiles_REF)
-  
   i = i + 1
-  
 }
 
+# Add unique CTD profile identifier
 stations_table <- stations_table %>%
-  mutate(id_ctd = seq(1, nrow(stations_table))) #___add unique CTD profile identifier
+  mutate(id_ctd = seq(1, nrow(stations_table))) 
 
 id_ctd_df <- stations_table %>%
-  select(c(REF, station, id_ctd)) #___to join
+  dplyr::select(c(REF, station, id_ctd)) #___to join
 
 profiles_table <- profiles_table %>%
   left_join(id_ctd_df, by = c("REF", "station")) #___add unique CTD profile identifier to profiles table
 
-length(unique(profiles_table$id_ctd)) #___less profiles than stations => some profiles have NA TS data
+length(unique(profiles_table$id_ctd))
+length(unique(stations_table$id_ctd)) #___less profiles than stations => some profiles have NA TS data
 
 ## Remove profiles with NA data
 stations_table <- stations_table %>%
   filter(id_ctd %in% profiles_table$id_ctd)
 
+## Calculate max depth
 max_depth_ctd <- profiles_table %>%
   group_by(id_ctd) %>%
   reframe(max_depth = max(depth, na.rm = T))
@@ -260,3 +259,155 @@ saveRDS(profiles_table, "~/Desktop/WHOI/Data/ctd_data/ctd_profiles_table")
 
 ## End script
 rm(list=ls())
+
+
+####################
+# #------------------------------------------------------------------
+# # GET VARIABLES NETCDF
+# #------------------------------------------------------------------
+# 
+# stations_table <- NULL #___(a)
+# profiles_table <- NULL #___(b)
+# 
+# files <- df_files %>% #___remove individuals with no ctd file
+#   filter(!is.na(ctd_file)) %>%
+#   pull(ctd_file)
+# 
+# i = 1
+# 
+# for (file in files) {
+#   
+#   print(i)
+#   
+#   ncdf <- nc_open(file) #___NETCDF file
+#   
+#   ## Reference
+#   ref <- ncatt_get(ncdf, varid = 0, attname = "smru_platform_code")
+#   ref <- ref$value
+#   ref <- gsub("_", "-", ref)
+#   
+#   ## Number stations and depths
+#   nprof <- ncdf$dim$N_PROF$len
+#   ndepth <- ncdf$dim$N_LEVELS$len
+#   
+#   ## Type
+#   # type = ???
+#   
+#   ## Time
+#   dates_j <- ncvar_get(ncdf, varid = "JULD") #___julian date: days since 1950-01-01 00:00:00 UTC
+#   dates <- as.POSIXct(as.Date(dates_j, origin = as.Date("1950-01-01 00:00:00")), tz = "UTC") #___POSIXct
+#   # days <- format(dates, format = "%m/%d/%Y") #___mm/dd/yyyy
+#   # time <- format(dates, format = "%H:%M") #___HH:MM
+#   
+#   ## Position: not corrected with state-space model
+#   lat <- ncvar_get(ncdf, varid = "LATITUDE") #___°N
+#   lon <- ncvar_get(ncdf, varid = "LONGITUDE") #___°E
+#   PQC <- ncvar_get(ncdf, varid = "POSITION_QC") %>% #___ARGOS QC
+#     list_to_array()
+#   
+#   #------------------------------------------------------------------
+#   # (a) CTD STATIONS TABLE: REF, station, date, time, lon, lat, PQC
+#   #------------------------------------------------------------------
+#   
+#   refs <- rep(ref, nprof)
+#   stations <- seq(1, nprof)
+#   
+#   stations_REF <- data_frame(REF = refs, 
+#                              station = stations,
+#                              time = dates,
+#                              lon = lon,
+#                              lat = lat,
+#                              PQC = PQC)
+#   
+#   stations_table <- rbind(stations_table, stations_REF)
+#   
+#   ## Add max depth when construct CTD PROFILES TABLE (b)
+#   
+#   #----------------------------------------------------------------------------
+#   # (b) CTD PROFILES TABLE: REF, station, depth, temp, TQC, terr, sal, SQC, serr
+#   #----------------------------------------------------------------------------
+#   
+#   ## Temperature (°C)
+#   temp <- ncvar_get(ncdf, varid = "TEMP_ADJUSTED") %>% #___temperature
+#     as_tibble() %>%
+#     gather() %>%
+#     pull(value)
+#   tqc <- ncvar_get(ncdf, varid = "TEMP_ADJUSTED_QC") %>% #___temperature quality control
+#     list_to_array()
+#   terr <- ncvar_get(ncdf, varid = "TEMP_ADJUSTED_ERROR") %>% #___temperature error: SEA TEMPERATURE ERROR IN SITU ITS-90 SCALE
+#     as_tibble() %>%
+#     gather() %>%
+#     pull(value)
+#   
+#   ## Salinity
+#   psal <- ncvar_get(ncdf, varid = "PSAL_ADJUSTED") %>% #___practical salinity
+#     as_tibble() %>%
+#     gather() %>%
+#     pull(value)
+#   sqc <- ncvar_get(ncdf, varid = "PSAL_ADJUSTED_QC") %>% #___practical salinity quality control
+#     list_to_array()
+#   serr <- ncvar_get(ncdf, varid = "PSAL_ADJUSTED_ERROR") %>% #___practical salinity error: PRACTICAL SALINITY ERROR
+#     as_tibble() %>%
+#     gather() %>%
+#     pull(value)
+#   
+#   ## Depth
+#   depth_array <- rep(seq(1:ndepth), nprof)
+#   # dqf <- ??????
+#   
+#   ## Stations
+#   station_array <- rep(1:nprof, each = ndepth)
+#   
+#   ## Reference
+#   ref_array <- rep(ref, nprof * ndepth)
+#   
+#   profiles_REF <- data_frame(REF = ref_array,
+#                              station = station_array,
+#                              depth = depth_array,
+#                              #DQC =
+#                              temp = temp,
+#                              TQC = tqc,
+#                              terr = terr,
+#                              psal = psal,
+#                              SQC = sqc,
+#                              serr = serr
+#   )
+#   
+#   profiles_REF <- profiles_REF %>%
+#     na.omit()
+#   
+#   profiles_table <- rbind(profiles_table, profiles_REF)
+#   
+#   i = i + 1
+#   
+# }
+# 
+# stations_table <- stations_table %>%
+#   mutate(id_ctd = seq(1, nrow(stations_table))) #___add unique CTD profile identifier
+# 
+# id_ctd_df <- stations_table %>%
+#   dplyr::select(c(REF, station, id_ctd)) #___to join
+# 
+# profiles_table <- profiles_table %>%
+#   left_join(id_ctd_df, by = c("REF", "station")) #___add unique CTD profile identifier to profiles table
+# 
+# length(unique(profiles_table$id_ctd)) #___less profiles than stations => some profiles have NA TS data
+# 
+# ## Remove profiles with NA data
+# stations_table <- stations_table %>%
+#   filter(id_ctd %in% profiles_table$id_ctd)
+# 
+# max_depth_ctd <- profiles_table %>%
+#   group_by(id_ctd) %>%
+#   reframe(max_depth = max(depth, na.rm = T))
+# 
+# stations_table <- stations_table %>%
+#   left_join(max_depth_ctd, by = "id_ctd")
+# 
+# ## Check if every station in CTD profiles table is in CTD stations table => integer(0)
+# profiles_table %>%
+#   filter(!id_ctd %in% stations_table$id_ctd) %>%
+#   pull(id_ctd)
+# 
+# saveRDS(stations_table, "~/Desktop/WHOI/Data/ctd_data/ctd_stations_table")
+# saveRDS(profiles_table, "~/Desktop/WHOI/Data/ctd_data/ctd_profiles_table")
