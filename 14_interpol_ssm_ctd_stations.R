@@ -48,8 +48,9 @@ length(unique(stations$REF))
 step0 <- stations %>%
   group_by(REF) %>%
   summarise(n_ctd_step0 = n())
-  
+
 seals <- seals %>% left_join(step0, by = "REF")
+sum(seals$n_ctd_step0, na.rm = T)
 
 # Step1: number of CTD profiles under northern boundary or latitude = NA
 northern_boundary <- -60
@@ -57,7 +58,7 @@ northern_boundary <- -60
 stations <- stations %>%
   filter(is.na(lat) | lat < northern_boundary)
 
-file_loc = "~/Desktop/WHOI/Data/ctd_stations_table_north_bound"
+file_loc = "~/Desktop/WHOI/Data/ctd_data/ctd_stations_table_north_bound"
 saveRDS(stations, file_loc)
 
 step1 <- stations %>%
