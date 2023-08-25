@@ -199,7 +199,7 @@ col = c("outside" = "orange",
         "Shackleton"= "#EE7496",
         "Mertz" = "#348FA7FF")
 
-xscores = scores(cap)
+scores = scores(cap)
 coord = as.data.frame(scores$sites)
 coord$pol = meta$pol
 coord$region = zone[as.character(coord$pol)]
