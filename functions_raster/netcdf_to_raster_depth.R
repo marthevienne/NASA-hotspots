@@ -1,29 +1,31 @@
-file_name <- "~/Dropbox/data/CESM_outputs/JRA 4p2z run/CESM-JRA-002branch-2004-2021.monthly.mesozooC.nc"
-lon_name = "TLONG"
-lat_name = "TLAT"
-var_name = "mesozooC"
-n_depths = 15
-tolerance = 5.36362e-05
-
-toto <- netcdf_to_raster(file_name,
-                         lon_name,
-                         lat_name,
-                         depth_name,
-                         var_name,
-                         n_years,
-                         n_depths,
-                         n_months,
-                         tolerance)
+# file_name <- "~/Dropbox/data/CESM_outputs/JRA 4p2z run/CESM-JRA-002branch-2004-2021.monthly.mesozooC.nc"
+# lon_name = "TLONG"
+# lat_name = "TLAT"
+# var_name = "mesozooC"
+# n_depths = 15
+# tolerance = 5.36362e-05
+# 
+# toto <- netcdf_to_raster(file_name,
+#                          lon_name,
+#                          lat_name,
+#                          depth_name,
+#                          var_name,
+#                          n_years,
+#                          n_depths,
+#                          n_months,
+#                          tolerance)
 
 netcdf_to_raster <- function(file_name,
                              lon_name,
                              lat_name,
-                             depth_name,
                              var_name,
                              n_years,
                              n_depths,
                              n_months,
                              tolerance) {
+  
+  require(reshape)
+  require(sp)
   
   ncin <- ncdf4::nc_open(file_name)
   
@@ -46,8 +48,10 @@ netcdf_to_raster <- function(file_name,
   
   if (length(dim(z)) == 2) {
     z_df = melt(z)
-  } else {
+  } else if (length(dim(z)) == 4) {
     z_df = melt(z[,,1,1])
+  } else if (length(dim(z)) == 3) {
+    z_df = melt(z[,,1])
   }
   z_df$value <- as.factor(z_df$value)
   levels(z_df$value)
@@ -88,10 +92,16 @@ netcdf_to_raster <- function(file_name,
     for (h in 1:(n_years*n_months)) {
       
       for (d in 1:n_depths) {
+        if (n_depths == 1) {
+          pixels <- SpatialPixelsDataFrame(points = grid_coord,
+                                           data = data.frame(z = c(z[,,h])[idx]),
+                                           tolerance = tolerance)
+        } else {
       
         pixels <- SpatialPixelsDataFrame(points = grid_coord,
                                          data = data.frame(z = c(z[,,d,h])[idx]),
                                          tolerance = tolerance)
+        }
         
         r[[a]] <- raster(pixels[,'z'])
         a <- a + 1
