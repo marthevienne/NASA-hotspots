@@ -5,7 +5,7 @@ sal = importdata('~/Desktop/WHOI/Data/ctd_data/gamma_n_data/psalinity.csv', ',')
 sal = sal.data;
 sal(sal==-999) = NaN;
 
-temp = importdata('~/Desktop/WHOI/Data/ctd_data/gamma_n_data/pot_temp.csv', ',');
+temp = importdata('~/Desktop/WHOI/Data/ctd_data/gamma_n_data/temp.csv', ',');
 temp = temp.data;
 temp(temp==-999) = NaN;
 
