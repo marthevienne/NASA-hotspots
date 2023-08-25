@@ -62,9 +62,10 @@ which(!ref_ctd %in% ref_dives) #___supposed to be == integer(0)
 #==================================================================
 
 speed <- dives_all_var %>%
+  filter(zone %in% c("shelf", "slope")) %>%
   mutate(inside_pol = case_when(pol > 0 ~ "yes",
                                 .default = "no")) %>%
-  dplyr::select(c(interpLat, interpLon, inside_pol, DE_DATE))
+  dplyr::select(c(interpLat, interpLon, zone, inside_pol, DE_DATE))
 
 speed <- speed %>%
   mutate(dist_lat = abs(interpLat) - abs(lag(interpLat, default = interpLat[1])),
@@ -79,7 +80,7 @@ speed <- speed %>%
 speed$inside_pol = factor(speed$inside_pol, levels = c("yes", "no")) 
 
 stats_speed <- speed %>%
-  group_by(inside_pol) %>%
+  group_by(zone, inside_pol) %>%
   reframe(mean = mean(speed_kmh, na.rm = T),
           sd = sd(speed_kmh),
           median = median(speed_kmh, na.rm = T),
@@ -91,6 +92,7 @@ dplot <- ggplot() +
   geom_vline(data = stats_speed, aes(xintercept = median, col = inside_pol), lty = 2) +
   # geom_vline(data = stats_speed, aes(xintercept = Q1, col = inside_pol), lty = 3) +
   # geom_vline(data = stats_speed, aes(xintercept = Q3, col = inside_pol), lty = 3) +
+  facet_grid(zone~.) + 
   theme_minimal() +
   xlab(expression(Speed~(km.h^-1))) +
   scale_color_viridis_d("Zone", direction = 1, labels = c("inside", "outside")) +
@@ -99,10 +101,11 @@ dplot <- ggplot() +
 
 
 ggsave(plot = dplot, "~/Dropbox/data/outputs_Marthe_2023/ctd/density_plot_speed_in_out.png", 
-       height = 6, width = 15, units = "cm", dpi = 300)
+       height = 10, width = 15, units = "cm", dpi = 300)
 
 
 rm(speed)
+
 #==================================================================
 # Assign CTD stations to dives
 #==================================================================
@@ -118,8 +121,8 @@ tab_ctd_tot <- NULL #___df with result from selection on distance and timing bet
 i = 1
 
 for (seal in seals) {
-  sprintf("%s: %s", i, seal)
-  
+  print(paste0(i, ": ", seal))
+
   ctd_seal <- ctd %>%
     filter(REF == seal) #___ctd associated to one seal
   
@@ -140,35 +143,36 @@ saveRDS(tab_ctd_tot, "behavioural_data/dives_ctd_assigned_not_filt")
 # Step 2: filter CTD stations on time criterion and maximum depth
 #------------------------------------------------------------------
 
-#tab_ctd_tot <- readRDS("behavioural_data/dives_ctd_assigned_not_filt")
+tab_ctd_tot <- readRDS("behavioural_data/dives_ctd_assigned_not_filt")
 
 dt_thresh <- 6 #___(h) maximal time interval between CTD and dive
 
 ## Filter CTD on time and maximum depth criteria
 tab_ctd_filt <- tab_ctd_tot %>%
-  filter(max_depth_ctd >= MAX_DEP) %>%
+  filter(max_depth_ctd >= MAX_DEP | max_depth_ctd == 1000) %>%
   filter(dist_t <= dt_thresh * 60) #___min
+
+tab_ctd_filt %>% count()
 
 ## Count the number of ctd stations attributed to each dive 
 counts <- tab_ctd_filt %>%
-  filter(max_depth_ctd >= MAX_DEP) %>%
   group_by(REF, NUM) %>%
   filter(dist_t <= dt_thresh * 60) %>% #___minutes
   summarise(n_ctd = n())
 
 ## Select the closest CTD station in time
-tab_ctd_filt <- tab_ctd_filt %>%
+tab_ctd_filt_ar <- tab_ctd_filt %>%
   group_by(REF, NUM) %>%
   arrange(dist_t, .by_group = TRUE) %>%
   filter(row_number() == 1)
 
 {
-  pdf("~/Dropbox/data/outputs_Marthe_2023/hist_filt_CTD_dives.png", height = 4, width = 6)
-  print(hist(tab_ctd_filt$distance_m, breaks = 30, 
+  pdf("~/Dropbox/data/outputs_Marthe_2023/ctd/hist_filt_CTD_dives.png", height = 4, width = 6)
+  print(hist(tab_ctd_filt_ar$distance_m, breaks = 30, 
              main = "Distance between dive locations and CTD stations")) #___hist of distance between dive location and CTD station
   print(xlab("Distance (m)"))
 
-  print(hist(as.numeric(tab_ctd_filt$dist_t), breaks = 30, 
+  print(hist(as.numeric(tab_ctd_filt_ar$dist_t), breaks = 30, 
              main = "Time interval between dive locations and CTD stations")) #___hist of time interval between dive location and CTD station
   print(xlab("Time (min)"))
   dev.off()
@@ -179,9 +183,14 @@ tab_ctd_filt <- tab_ctd_filt %>%
 # Step 3: add CTD stations id to dives table
 #------------------------------------------------------------------
 
-id_dive_ctd <- tab_ctd_filt %>%
+id_dive_ctd <- tab_ctd_filt_ar %>%
   filter(!is.na(id_ctd)) %>%
   dplyr::select(c(REF, NUM, id_ctd)) #___for join with dives table
+
+id_dive_ctd %>%
+  group_by(REF, NUM) %>%
+  count() %>%
+  filter(n > 1)
 
 dives_ctd <- dives_all_var %>%
   left_join(id_dive_ctd, by = c("REF", "NUM"))
